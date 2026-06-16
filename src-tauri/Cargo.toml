@@ -1,6 +1,6 @@
 [package]
 name = "alethe"
-version = "1.1.0"
+version = "1.2.0"
 description = "Alethe — terminal multiplexer GUI"
 authors = ["Kauã Miguel"]
 license = "AGPL-3.0-or-later"
@@ -24,7 +24,6 @@ tauri-plugin-notification = "2.3.3"
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "net"] }
 which = "6"
 zip = "0.6"
-winreg = "0.52"
 sysinfo = "0.31"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tiny_http = "0.12"
@@ -33,6 +32,11 @@ dirs-next = "2"
 base64 = "0.22"
 urlencoding = "2"
 dotenvy = "0.15"
+
+# Dependências só-Windows (registro + Win32). Em Linux/macOS o `winreg` nem
+# compila, então ficam atrás de `cfg(windows)`; o código que as usa já é gated.
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_System_DataExchange",

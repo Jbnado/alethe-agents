@@ -22,6 +22,8 @@ fn existing_path_from_user_input(path: &str) -> Result<PathBuf, String> {
 #[tauri::command]
 pub fn open_in_file_explorer(path: String) -> Result<(), String> {
     let target = existing_path_from_user_input(&path)?;
+
+    #[cfg(target_os = "windows")]
     let result = if target.is_file() {
         Command::new("explorer")
             .arg("/select,")
@@ -30,6 +32,25 @@ pub fn open_in_file_explorer(path: String) -> Result<(), String> {
     } else {
         Command::new("explorer").arg(target.as_os_str()).spawn()
     };
+
+    #[cfg(target_os = "macos")]
+    let result = if target.is_file() {
+        Command::new("open").arg("-R").arg(target.as_os_str()).spawn()
+    } else {
+        Command::new("open").arg(target.as_os_str()).spawn()
+    };
+
+    // xdg-open não tem "revelar/selecionar": abre o diretório (pai, se for arquivo).
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let result = {
+        let dir = if target.is_file() {
+            target.parent().map(|p| p.to_path_buf()).unwrap_or_else(|| target.clone())
+        } else {
+            target.clone()
+        };
+        Command::new("xdg-open").arg(dir.as_os_str()).spawn()
+    };
+
     result.map(|_| ()).map_err(|e| e.to_string())
 }
 
@@ -251,11 +272,15 @@ pub fn timestamp_ms() -> String {
 pub fn open_data_folder(app: AppHandle) -> Result<(), String> {
     let path = app_data_dir(&app)?;
     fs::create_dir_all(&path).map_err(|error| error.to_string())?;
-    Command::new("explorer")
-        .arg(path)
-        .spawn()
-        .map(|_| ())
-        .map_err(|error| error.to_string())
+
+    #[cfg(target_os = "windows")]
+    let result = Command::new("explorer").arg(&path).spawn();
+    #[cfg(target_os = "macos")]
+    let result = Command::new("open").arg(&path).spawn();
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let result = Command::new("xdg-open").arg(&path).spawn();
+
+    result.map(|_| ()).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -267,11 +292,15 @@ pub fn open_spawn_log(app: AppHandle) -> Result<(), String> {
     if !path.exists() {
         fs::write(&path, "").map_err(|error| error.to_string())?;
     }
-    Command::new("notepad")
-        .arg(path)
-        .spawn()
-        .map(|_| ())
-        .map_err(|error| error.to_string())
+
+    #[cfg(target_os = "windows")]
+    let result = Command::new("notepad").arg(&path).spawn();
+    #[cfg(target_os = "macos")]
+    let result = Command::new("open").arg(&path).spawn();
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let result = Command::new("xdg-open").arg(&path).spawn();
+
+    result.map(|_| ()).map_err(|error| error.to_string())
 }
 
 /// Limpa todo o conteúdo de `%LOCALAPPDATA%\dev.alethe\` (projects.json,

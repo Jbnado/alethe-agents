@@ -8,14 +8,36 @@ on:
 
 jobs:
   build:
-    name: Build Windows x64
-    # Alethe é Windows-first (winreg, windows-sys, ConPTY); só compila no Windows.
-    runs-on: windows-latest
+    name: Build ${{ matrix.label }}
     permissions:
       contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            label: Windows x64
+            args: ''
+          - platform: ubuntu-22.04
+            label: Linux x64
+            args: ''
+          - platform: macos-latest
+            label: macOS Apple Silicon
+            args: '--target aarch64-apple-darwin'
+          - platform: macos-latest
+            label: macOS Intel
+            args: '--target x86_64-apple-darwin'
+
+    runs-on: ${{ matrix.platform }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -26,6 +48,8 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -35,13 +59,14 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build and upload Tauri bundle
+      - name: Build and upload Tauri bundles
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__
           releaseName: 'Alethe v__VERSION__'
-          releaseBody: 'Free desktop build of Alethe (Windows). Local app is free; cloud/sync services may be offered separately.'
+          releaseBody: 'Free desktop build of Alethe for Windows, macOS and Linux. Local app is free; cloud/sync services may be offered separately.'
           releaseDraft: true
           prerelease: false
+          args: ${{ matrix.args }}

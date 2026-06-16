@@ -11,10 +11,20 @@ use winreg::{enums::*, RegKey};
 static REBUILT_PATH: OnceLock<String> = OnceLock::new();
 
 pub fn default_shell() -> String {
-    if which::which("pwsh.exe").is_ok() {
-        return "pwsh.exe".to_string();
+    #[cfg(windows)]
+    {
+        if which::which("pwsh.exe").is_ok() {
+            return "pwsh.exe".to_string();
+        }
+        "powershell.exe".to_string()
     }
-    "powershell.exe".to_string()
+    #[cfg(not(windows))]
+    {
+        std::env::var("SHELL")
+            .ok()
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or_else(|| "/bin/bash".to_string())
+    }
 }
 
 pub fn command_builder_for_terminal(
@@ -31,18 +41,35 @@ pub fn command_builder_for_terminal(
             let arg = resolved_launcher
                 .map(|s| s.to_string())
                 .unwrap_or_else(|| command.to_string());
-            let escaped = arg.replace('\'', "''");
-            let extras_pwsh = extra_args
-                .iter()
-                .map(|a| format!(" '{}'", a.replace('\'', "''")))
-                .collect::<String>();
             let shell = default_shell();
-            let mut builder = CommandBuilder::new(&shell);
-            builder.arg("-NoLogo");
-            builder.arg("-NoExit");
-            builder.arg("-Command");
-            builder.arg(format!("& '{escaped}'{extras_pwsh}"));
-            builder
+
+            #[cfg(windows)]
+            {
+                let escaped = arg.replace('\'', "''");
+                let extras_pwsh = extra_args
+                    .iter()
+                    .map(|a| format!(" '{}'", a.replace('\'', "''")))
+                    .collect::<String>();
+                let mut builder = CommandBuilder::new(&shell);
+                builder.arg("-NoLogo");
+                builder.arg("-NoExit");
+                builder.arg("-Command");
+                builder.arg(format!("& '{escaped}'{extras_pwsh}"));
+                builder
+            }
+            #[cfg(not(windows))]
+            {
+                // POSIX shell: exec do launcher + args, com aspas simples escapadas.
+                let esc = |s: &str| s.replace('\'', "'\\''");
+                let mut line = format!("exec '{}'", esc(&arg));
+                for a in extra_args {
+                    line.push_str(&format!(" '{}'", esc(a)));
+                }
+                let mut builder = CommandBuilder::new(&shell);
+                builder.arg("-lc");
+                builder.arg(line);
+                builder
+            }
         }
         None => {
             let shell = default_shell();
