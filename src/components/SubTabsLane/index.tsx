@@ -1,5 +1,6 @@
 import { Plus, X } from 'lucide-react'
 
+import { useT } from '../../lib/i18n'
 import { useProjectsStore } from '../../stores/projectsStore'
 import type { SubTab } from '../../lib/types'
 import { AgentIcon } from '../icons/AgentIcons'
@@ -14,6 +15,7 @@ export type SubTabsLaneProps = {
 }
 
 export function SubTabsLane({ tabs, activeTabId, onActivate, onClose, onAdd }: SubTabsLaneProps) {
+  const t = useT()
   const terminalTheme = useProjectsStore(
     (s) => s.preferences.terminalTheme ?? s.preferences.uiTheme,
   )
@@ -36,7 +38,7 @@ export function SubTabsLane({ tabs, activeTabId, onActivate, onClose, onAdd }: S
             >
               <AgentIcon type={tab.type} size={14} theme={terminalTheme} />
               {tab.completionUnread ? (
-                <span className={styles.doneBadge} aria-label="Resposta pronta">
+                <span className={styles.doneBadge} aria-label={t('ui.terminal.responseReady')}>
                   !
                 </span>
               ) : null}
@@ -47,10 +49,10 @@ export function SubTabsLane({ tabs, activeTabId, onActivate, onClose, onAdd }: S
                 className={styles.close}
                 onClick={(e) => {
                   e.stopPropagation()
-                  if (window.confirm(`Fechar tab "${tab.name || tab.type}"?`)) onClose(tab.id)
+                  if (window.confirm(t('ui.subtabs.confirmCloseTab', { name: tab.name || tab.type }))) onClose(tab.id)
                 }}
-                title="Fechar tab"
-                aria-label="Fechar tab"
+                title={t('ui.subtabs.closeTab')}
+                aria-label={t('ui.subtabs.closeTab')}
               >
                 <X size={8} />
               </button>
@@ -62,8 +64,8 @@ export function SubTabsLane({ tabs, activeTabId, onActivate, onClose, onAdd }: S
         type="button"
         className={styles.add}
         onClick={onAdd}
-        title="Nova tab"
-        aria-label="Nova tab"
+        title={t('ui.subtabs.newTab')}
+        aria-label={t('ui.subtabs.newTab')}
       >
         <Plus size={12} />
       </button>

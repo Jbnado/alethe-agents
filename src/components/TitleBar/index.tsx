@@ -1,8 +1,9 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { Maximize2, Menu, Minus, PanelLeftClose, PanelLeftOpen, Workflow, X } from 'lucide-react'
+import { Maximize2, Menu, Minus, PanelLeftClose, PanelLeftOpen, Users, Workflow, X } from 'lucide-react'
 import { useEffect } from 'react'
 
 import { getCachedClaudeUsage } from '../../lib/claudeUsageCache'
+import { useT } from '../../lib/i18n'
 import { getMemoryStats, killPty } from '../../lib/tauri'
 import type { ClaudeUsage } from '../../lib/tauri'
 import { MAX_RECENT_PROJECT_TABS, useProjectsStore } from '../../stores/projectsStore'
@@ -56,6 +57,7 @@ function collectGroupProjectIds(groupId: string, groups: { id: string; parentGro
 }
 
 export function TitleBar() {
+  const t = useT()
   const toggleMainMenu = useUiStore((s) => s.toggleMainMenu)
   const sidebarVisible = useUiStore((s) => s.sidebarVisible)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
@@ -73,6 +75,8 @@ export function TitleBar() {
   const containers = useProjectsStore((s) => s.workspace.containers)
   const recentProjectIds = useProjectsStore((s) => s.workspace.recentProjectIds)
   const recentTabs = useProjectsStore((s) => s.workspace.recentTabs)
+  const profiles = useProjectsStore((s) => s.profiles)
+  const activeProfileId = useProjectsStore((s) => s.activeProfileId)
   const projects = useProjectsStore((s) => s.projects)
   const groups = useProjectsStore((s) => s.groups)
   const activeProjectId = useProjectsStore((s) => s.activeProjectId)
@@ -80,6 +84,7 @@ export function TitleBar() {
   const openGroupScope = useProjectsStore((s) => s.openGroupScope)
   const closeWorkspaceTab = useProjectsStore((s) => s.closeWorkspaceTab)
   const closeOtherContainers = useProjectsStore((s) => s.closeOtherContainers)
+  const activeProfile = profiles.find((profile) => profile.id === activeProfileId) ?? null
 
   const closeAgentPlanning = () => {
     if (!agentCanvasSession) return
@@ -195,8 +200,8 @@ export function TitleBar() {
         type="button"
         className={styles.iconBtn}
         onClick={toggleMainMenu}
-        title="Menu"
-        aria-label="Menu"
+        title={t('ui.titlebar.menu')}
+        aria-label={t('ui.titlebar.menu')}
       >
         <Menu size={14} />
       </button>
@@ -204,8 +209,8 @@ export function TitleBar() {
         type="button"
         className={`${styles.iconBtn} ${sidebarVisible ? styles.iconBtnActive : ''}`}
         onClick={toggleSidebar}
-        title={sidebarVisible ? 'Fechar sidebar' : 'Abrir sidebar'}
-        aria-label={sidebarVisible ? 'Fechar sidebar' : 'Abrir sidebar'}
+        title={sidebarVisible ? t('ui.titlebar.closeSidebar') : t('ui.titlebar.openSidebar')}
+        aria-label={sidebarVisible ? t('ui.titlebar.closeSidebar') : t('ui.titlebar.openSidebar')}
         aria-pressed={sidebarVisible}
       >
         {sidebarVisible ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
@@ -217,7 +222,7 @@ export function TitleBar() {
         <div
           className={styles.groupTabs}
           role="tablist"
-          aria-label="Tabs recentes"
+          aria-label={t('ui.titlebar.recentTabs')}
           data-tauri-drag-region
         >
           {recentWorkspaceTabs.map((tab) => {
@@ -262,8 +267,8 @@ export function TitleBar() {
                       event.stopPropagation()
                       closeWorkspaceTab({ kind: 'group', id: group.id })
                     }}
-                    title="Remover da topbar"
-                    aria-label={`Remover ${group.name} da topbar`}
+                    title={t('ui.titlebar.removeFromTopbar')}
+                    aria-label={t('ui.titlebar.removeNameFromTopbar', { name: group.name })}
                   >
                     <X size={11} />
                   </button>
@@ -315,8 +320,8 @@ export function TitleBar() {
                     event.stopPropagation()
                     closeWorkspaceTab({ kind: 'project', id: project.id })
                   }}
-                  title="Remover da topbar"
-                  aria-label={`Remover ${project.name} da topbar`}
+                  title={t('ui.titlebar.removeFromTopbar')}
+                  aria-label={t('ui.titlebar.removeNameFromTopbar', { name: project.name })}
                 >
                   <X size={11} />
                 </button>
@@ -346,8 +351,8 @@ export function TitleBar() {
                   event.stopPropagation()
                   closeAgentPlanning()
                 }}
-                title="Fechar Agent Planning"
-                aria-label="Fechar Agent Planning"
+                title={t('ui.titlebar.closeAgentPlanning')}
+                aria-label={t('ui.titlebar.closeAgentPlanning')}
               >
                 <X size={11} />
               </button>
@@ -356,6 +361,17 @@ export function TitleBar() {
         </div>
       ) : null}
       <div className={styles.spacer} data-tauri-drag-region />
+      <button
+        type="button"
+        className={styles.profilePill}
+        title={t('profile.manageAccounts')}
+        onClick={() => openModal('profiles')}
+      >
+        <Users size={12} />
+        <span className={styles.profilePillLabel}>
+          {activeProfile?.name ?? t('profile.localAccount')}
+        </span>
+      </button>
       {claudeUsage !== null ? (
         <span
           className={styles.claudePill}
@@ -369,7 +385,7 @@ export function TitleBar() {
         <button
           type="button"
           className={styles.ramPill}
-          title="Abrir analytics de memória"
+          title={t('ui.titlebar.openMemoryAnalytics')}
           onClick={() => openModal('memoryAnalytics')}
         >
           {ramMb.toFixed(0)} MB
@@ -379,8 +395,8 @@ export function TitleBar() {
         type="button"
         className={styles.windowBtn}
         onClick={() => void win.minimize()}
-        title="Minimizar"
-        aria-label="Minimizar"
+        title={t('ui.titlebar.minimize')}
+        aria-label={t('ui.titlebar.minimize')}
       >
         <Minus size={14} />
       </button>
@@ -388,8 +404,8 @@ export function TitleBar() {
         type="button"
         className={styles.windowBtn}
         onClick={() => void win.toggleMaximize()}
-        title="Maximizar"
-        aria-label="Maximizar"
+        title={t('ui.titlebar.maximize')}
+        aria-label={t('ui.titlebar.maximize')}
       >
         <Maximize2 size={12} />
       </button>
@@ -397,8 +413,8 @@ export function TitleBar() {
         type="button"
         className={`${styles.windowBtn} ${styles.close}`}
         onClick={() => void win.close()}
-        title="Fechar"
-        aria-label="Fechar"
+        title={t('ui.titlebar.close')}
+        aria-label={t('ui.titlebar.close')}
       >
         <X size={14} />
       </button>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { GROUP_COLORS } from '../../lib/types'
+import { useT } from '../../lib/i18n'
 import { useProjectsStore } from '../../stores/projectsStore'
 import { useUiStore } from '../../stores/uiStore'
 import { ImageInput } from './ImageInput'
@@ -8,6 +9,7 @@ import { Modal } from './Modal'
 import controls from './controls.module.css'
 
 export function EditGroupModal() {
+  const t = useT()
   const open = useUiStore((s) => s.openModal === 'editGroup')
   const context = useUiStore((s) => s.modalContext) as { groupId?: string } | null
   const closeModal = useUiStore((s) => s.closeModal)
@@ -48,11 +50,11 @@ export function EditGroupModal() {
     <Modal
       open={open}
       onClose={closeModal}
-      title="Editar grupo"
+      title={t('crud.editGroupTitle')}
       footer={
         <>
           <button type="button" className={controls.btn} onClick={closeModal}>
-            Cancelar
+            {t('crud.cancel')}
           </button>
           <button
             type="button"
@@ -60,13 +62,13 @@ export function EditGroupModal() {
             disabled={!name.trim()}
             onClick={submit}
           >
-            Salvar
+            {t('crud.save')}
           </button>
         </>
       }
     >
       <div className={controls.field}>
-        <label className={controls.label}>Nome</label>
+        <label className={controls.label}>{t('crud.nameLabel')}</label>
         <input
           className={controls.input}
           value={name}
@@ -76,14 +78,14 @@ export function EditGroupModal() {
       </div>
 
       <div className={controls.field}>
-        <label className={controls.label}>Cor</label>
+        <label className={controls.label}>{t('crud.colorLabel')}</label>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {GROUP_COLORS.map((c) => (
             <button
               key={c}
               type="button"
               onClick={() => setColor(c)}
-              aria-label={`Cor ${c}`}
+              aria-label={t('crud.colorSwatch', { color: c })}
               style={{
                 width: 28,
                 height: 28,
@@ -98,11 +100,11 @@ export function EditGroupModal() {
       </div>
 
       <ImageInput
-        label="Icone"
+        label={t('crud.iconLabel')}
         value={iconUrl}
         onChange={setIconUrl}
         onEnter={submit}
-        hint="Use uma URL ou faça upload de uma imagem local. Substitui o bullet colorido na sidebar. Deixe vazio pra usar a cor."
+        hint={t('crud.groupIconHint')}
       />
 
       <div
@@ -142,7 +144,7 @@ export function EditGroupModal() {
             }}
           />
         )}
-        Pré-visualização: a cor pinta a borda dos containers e o bullet da sidebar.
+        {t('crud.groupColorPreview')}
       </div>
     </Modal>
   )

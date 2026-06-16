@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { intlLocale, useT, type Locale, type TFunction } from '../../lib/i18n'
 import { listClaudeSessions, restartPty, type ClaudeSessionMeta } from '../../lib/tauri'
 import { useProjectsStore } from '../../stores/projectsStore'
 import { Modal } from './Modal'
@@ -17,14 +18,14 @@ type Props = {
   extraArgs?: string[]
 }
 
-function formatRelative(ms: number): string {
+function formatRelative(ms: number, t: TFunction, language: Locale): string {
   const diff = Date.now() - ms
-  if (diff < 60_000) return 'agora'
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}min`
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`
+  if (diff < 60_000) return t('mod.justNow')
+  if (diff < 3_600_000) return t('mod.minutesAgo', { count: Math.floor(diff / 60_000) })
+  if (diff < 86_400_000) return t('mod.hoursAgo', { count: Math.floor(diff / 3_600_000) })
   const days = Math.floor(diff / 86_400_000)
-  if (days < 30) return `${days}d`
-  return new Date(ms).toLocaleDateString()
+  if (days < 30) return t('mod.daysAgo', { count: days })
+  return new Date(ms).toLocaleDateString(intlLocale(language))
 }
 
 function formatSize(bytes: number): string {
@@ -44,6 +45,8 @@ export function ClaudeHistoryModal({
   agentType,
   extraArgs,
 }: Props) {
+  const t = useT()
+  const language = useProjectsStore((s) => s.preferences.language)
   const [sessions, setSessions] = useState<ClaudeSessionMeta[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -101,7 +104,7 @@ export function ClaudeHistoryModal({
 
       onClose()
     } catch (err) {
-      setError(`Falha ao retomar: ${err}`)
+      setError(t('mod.resumeFailed', { error: String(err) }))
     } finally {
       setBusyId(null)
     }
@@ -118,13 +121,13 @@ export function ClaudeHistoryModal({
   })
 
   return (
-    <Modal open={open} onClose={onClose} title="Histórico de sessões" width={520}>
-      <div className={styles.cwd}>{cwd || '(sem cwd)'}</div>
+    <Modal open={open} onClose={onClose} title={t('mod.sessionHistory')} width={520}>
+      <div className={styles.cwd}>{cwd || t('mod.noCwd')}</div>
 
       <input
         type="text"
         className={styles.search}
-        placeholder="Filtrar por título ou prompt…"
+        placeholder={t('mod.filterPlaceholder')}
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
         data-autofocus
@@ -134,19 +137,19 @@ export function ClaudeHistoryModal({
 
       <div className={styles.list}>
         {sessions === null ? (
-          <div className={styles.empty}>Carregando sessões…</div>
+          <div className={styles.empty}>{t('mod.loadingSessions')}</div>
         ) : filtered && filtered.length === 0 ? (
           <div className={styles.empty}>
             {sessions.length === 0
-              ? 'Nenhuma sessão Claude encontrada para este cwd.'
-              : 'Nenhuma sessão bate com esse filtro.'}
+              ? t('mod.noSessionsForCwd')
+              : t('mod.noSessionsMatchFilter')}
           </div>
         ) : (
           filtered?.map((session) => {
             const titleText =
               session.title ||
               session.first_user_prompt ||
-              `Sessão ${session.id.slice(0, 8)}`
+              t('mod.sessionFallback', { id: session.id.slice(0, 8) })
             return (
               <div key={session.id} className={styles.item}>
                 <div className={styles.itemMain}>
@@ -159,9 +162,9 @@ export function ClaudeHistoryModal({
                     </div>
                   ) : null}
                   <div className={styles.itemMeta}>
-                    <span>{formatRelative(session.modified_at_ms)}</span>
+                    <span>{formatRelative(session.modified_at_ms, t, language)}</span>
                     <span>·</span>
-                    <span>{session.message_count} msgs</span>
+                    <span>{t('mod.msgsCount', { count: session.message_count })}</span>
                     <span>·</span>
                     <span>{formatSize(session.size_bytes)}</span>
                   </div>
@@ -172,9 +175,9 @@ export function ClaudeHistoryModal({
                     className={styles.actionBtn}
                     disabled={busyId !== null}
                     onClick={() => void resumeHere(session.id)}
-                    title="Mata o PTY atual e respawna esta sessão neste pane"
+                    title={t('mod.resumeHereTooltip')}
                   >
-                    {busyId === session.id ? '…' : 'Continuar aqui'}
+                    {busyId === session.id ? '…' : t('mod.resumeHere')}
                   </button>
                 </div>
               </div>

@@ -9,6 +9,7 @@ import {
   type GridLayout,
   type Group,
   type LayoutMode,
+  type Locale,
   type Preferences,
   type Project,
   type ProjectsFile,
@@ -18,7 +19,14 @@ import {
   type WorkspaceContainer,
   type WorkspaceRecentTab,
 } from '../lib/types'
-import { loadProjectsFile, saveProjectsFile } from '../lib/tauri'
+import {
+  listProfiles,
+  loadProjectsFile,
+  saveProjectsFile,
+  type ProfileMeta,
+  type ProfilesState,
+} from '../lib/tauri'
+import { setStorageNamespace } from '../lib/storageNamespace'
 
 const SAVE_DEBOUNCE_MS = 500
 const MIN_UI_ZOOM = 0.8
@@ -27,6 +35,8 @@ const UI_ZOOM_STEP = 0.1
 export const MAX_RECENT_PROJECT_TABS = 10
 
 type ProjectsState = ProjectsFile & {
+  activeProfileId: string
+  profiles: ProfileMeta[]
   hydrated: boolean
   hydrate: () => Promise<void>
 
@@ -147,6 +157,7 @@ type ProjectsState = ProjectsFile & {
   ) => void
 
   // preferences / cli
+  setLanguage: (language: Locale) => void
   setUiTheme: (theme: Theme) => void
   setUiZoom: (zoom: number) => void
   setTerminalTheme: (theme: Theme | null) => void
@@ -276,6 +287,7 @@ function normalizePreferences(raw: Partial<Preferences> | undefined): Preference
     Boolean(raw?.onboardingDone && raw?.displayName && raw.displayName.trim().length > 0)
   return {
     ...preferences,
+    language: preferences.language === 'pt-BR' ? 'pt-BR' : 'en',
     accountCreated: legacyAccountCreated,
     displayName: preferences.displayName.trim(),
     profileImageUrl: preferences.profileImageUrl.trim(),
@@ -436,21 +448,48 @@ export const useProjectsStore = create<ProjectsState>((set, get) => {
 
   return {
     ...EMPTY_PROJECTS_FILE,
+    activeProfileId: 'default',
+    profiles: [],
     hydrated: false,
 
     hydrate: async () => {
+      let profileState: ProfilesState = {
+        active_profile_id: 'default',
+        profiles: [],
+      }
+      try {
+        profileState = await listProfiles()
+        setStorageNamespace(profileState.active_profile_id)
+      } catch (err) {
+        console.error('Falha ao carregar profiles.json — usando default', err)
+        setStorageNamespace('default')
+      }
+
       try {
         const raw = await loadProjectsFile()
         if (!raw) {
-          set({ hydrated: true })
+          set({
+            hydrated: true,
+            activeProfileId: profileState.active_profile_id,
+            profiles: profileState.profiles,
+          })
           return
         }
         const parsed = JSON.parse(raw)
         const migrated = migrate(parsed)
-        set({ ...migrated, hydrated: true })
+        set({
+          ...migrated,
+          hydrated: true,
+          activeProfileId: profileState.active_profile_id,
+          profiles: profileState.profiles,
+        })
       } catch (err) {
         console.error('Falha ao carregar projects.json — usando estado vazio', err)
-        set({ hydrated: true })
+        set({
+          hydrated: true,
+          activeProfileId: profileState.active_profile_id,
+          profiles: profileState.profiles,
+        })
       }
     },
 
@@ -1310,6 +1349,9 @@ export const useProjectsStore = create<ProjectsState>((set, get) => {
       updateSubTab(projectId, terminalId, tabId, (s) => ({ ...s, sessionId })),
 
     /* ------------ preferences / cli ------------ */
+
+    setLanguage: (language) =>
+      update((state) => ({ preferences: { ...state.preferences, language } })),
 
     setUiTheme: (theme) =>
       update((state) => ({ preferences: { ...state.preferences, uiTheme: theme } })),

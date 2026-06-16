@@ -1,5 +1,7 @@
 import { Activity, AlertTriangle, Cpu, Layers, Monitor, TerminalSquare, Trash2 } from 'lucide-react'
 
+import { intlLocale, useT, type Locale, type TFunction } from '../../lib/i18n'
+import { useProjectsStore } from '../../stores/projectsStore'
 import type { MemorySample } from '../../stores/uiStore'
 import { useUiStore } from '../../stores/uiStore'
 import { Modal } from './Modal'
@@ -8,10 +10,10 @@ import styles from './MemoryAnalyticsModal.module.css'
 
 type Bucket = 'app_mb' | 'webview_mb' | 'ptys_mb'
 
-const BUCKETS: Array<{ key: Bucket; label: string; short: string }> = [
-  { key: 'app_mb', label: 'App', short: 'App' },
-  { key: 'webview_mb', label: 'WebView', short: 'Web' },
-  { key: 'ptys_mb', label: 'Terminais', short: 'PTY' },
+const BUCKETS: Array<{ key: Bucket; labelKey: 'mod.bucketApp' | 'mod.bucketWebview' | 'mod.bucketPtys'; short: string }> = [
+  { key: 'app_mb', labelKey: 'mod.bucketApp', short: 'App' },
+  { key: 'webview_mb', labelKey: 'mod.bucketWebview', short: 'Web' },
+  { key: 'ptys_mb', labelKey: 'mod.bucketPtys', short: 'PTY' },
 ]
 
 function formatMb(value: number): string {
@@ -19,8 +21,12 @@ function formatMb(value: number): string {
   return `${value.toFixed(value >= 100 ? 0 : 1)} MB`
 }
 
-function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+function formatTime(ts: number, language: Locale): string {
+  return new Date(ts).toLocaleTimeString(intlLocale(language), {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
 }
 
 function average(samples: MemorySample[], key: keyof Pick<MemorySample, 'total_mb' | Bucket>): number {
@@ -33,65 +39,66 @@ function getGrowth(samples: MemorySample[], key: keyof Pick<MemorySample, 'total
   return Number(samples[samples.length - 1][key]) - Number(samples[0][key])
 }
 
-function dominantBucket(sample: MemorySample | null): { label: string; value: number; share: number } | null {
+function dominantBucket(sample: MemorySample | null, t: TFunction): { label: string; value: number; share: number } | null {
   if (!sample || sample.total_mb <= 0) return null
   const top = BUCKETS.map((bucket) => ({
-    label: bucket.label,
+    label: t(bucket.labelKey),
     value: sample[bucket.key],
     share: sample[bucket.key] / sample.total_mb,
   })).sort((a, b) => b.value - a.value)[0]
   return top ?? null
 }
 
-function buildDiagnostics(history: MemorySample[]): string[] {
-  if (history.length === 0) return ['Sem dados suficientes ainda.']
+function buildDiagnostics(history: MemorySample[], t: TFunction): string[] {
+  if (history.length === 0) return [t('mod.noDataYet')]
 
   const latest = history[history.length - 1]
   const recent = history.filter((sample) => latest.ts - sample.ts <= 10 * 60_000)
   const windowed = recent.length >= 2 ? recent : history
   const totalGrowth = getGrowth(windowed, 'total_mb')
   const bucketGrowth = BUCKETS.map((bucket) => ({
-    label: bucket.label,
+    label: t(bucket.labelKey),
     value: getGrowth(windowed, bucket.key),
   })).sort((a, b) => b.value - a.value)[0]
-  const top = dominantBucket(latest)
+  const top = dominantBucket(latest, t)
   const diagnostics: string[] = []
 
   if (latest.total_mb >= 2048) {
-    diagnostics.push('Uso total acima de 2 GB. Vale suspender grupos ociosos ou reiniciar panes antigos.')
+    diagnostics.push(t('mod.diagOver2gb'))
   } else if (latest.total_mb >= 1024) {
-    diagnostics.push('Uso total acima de 1 GB. Acompanhe crescimento antes de abrir mais terminais.')
+    diagnostics.push(t('mod.diagOver1gb'))
   }
 
   if (totalGrowth >= 250) {
-    diagnostics.push(`Crescimento de ${formatMb(totalGrowth)} na janela recente. Possível vazamento ou processo acumulando cache.`)
+    diagnostics.push(t('mod.diagHighGrowth', { value: formatMb(totalGrowth) }))
   } else if (totalGrowth >= 120) {
-    diagnostics.push(`Crescimento moderado de ${formatMb(totalGrowth)} na janela recente.`)
+    diagnostics.push(t('mod.diagModerateGrowth', { value: formatMb(totalGrowth) }))
   }
 
   if (bucketGrowth && bucketGrowth.value >= 80) {
-    diagnostics.push(`${bucketGrowth.label} foi a categoria que mais cresceu: +${formatMb(bucketGrowth.value)}.`)
+    diagnostics.push(t('mod.diagBucketGrowth', { label: bucketGrowth.label, value: formatMb(bucketGrowth.value) }))
   }
 
   if (top && top.share >= 0.6) {
-    diagnostics.push(`${top.label} concentra ${(top.share * 100).toFixed(0)}% da memória atual.`)
+    diagnostics.push(t('mod.diagDominant', { label: top.label, pct: (top.share * 100).toFixed(0) }))
   }
 
   if (latest.process_count >= 20) {
-    diagnostics.push(`${latest.process_count} processos no subtree do app. Muitos shells/CLIs abertos podem ser o gargalo.`)
+    diagnostics.push(t('mod.diagManyProcesses', { count: latest.process_count }))
   }
 
   if (diagnostics.length === 0) {
-    diagnostics.push('Sem gargalo claro no histórico atual. O consumo está estável ou distribuído.')
+    diagnostics.push(t('mod.diagStable'))
   }
 
   return diagnostics
 }
 
 function Sparkline({ samples }: { samples: MemorySample[] }) {
+  const t = useT()
   const chartSamples = samples.slice(-90)
   if (chartSamples.length < 2) {
-    return <div className={styles.emptyChart}>Aguardando mais amostras...</div>
+    return <div className={styles.emptyChart}>{t('mod.waitingMoreSamples')}</div>
   }
 
   const values = chartSamples.map((sample) => sample.total_mb)
@@ -120,6 +127,7 @@ function Sparkline({ samples }: { samples: MemorySample[] }) {
 }
 
 function CategoryBars({ latest }: { latest: MemorySample | null }) {
+  const t = useT()
   if (!latest || latest.total_mb <= 0) return null
 
   return (
@@ -130,7 +138,7 @@ function CategoryBars({ latest }: { latest: MemorySample | null }) {
         return (
           <div key={bucket.key} className={styles.categoryRow}>
             <div className={styles.categoryMeta}>
-              <span>{bucket.label}</span>
+              <span>{t(bucket.labelKey)}</span>
               <span>{formatMb(value)}</span>
             </div>
             <div className={styles.barTrack}>
@@ -144,6 +152,8 @@ function CategoryBars({ latest }: { latest: MemorySample | null }) {
 }
 
 export function MemoryAnalyticsModal() {
+  const t = useT()
+  const language = useProjectsStore((s) => s.preferences.language)
   const open = useUiStore((s) => s.openModal === 'memoryAnalytics')
   const onClose = useUiStore((s) => s.closeModal)
   const history = useUiStore((s) => s.memoryHistory)
@@ -158,20 +168,20 @@ export function MemoryAnalyticsModal() {
   const windowed = recent.length >= 2 ? recent : history
   const avg = average(windowed, 'total_mb')
   const growth = getGrowth(windowed, 'total_mb')
-  const diagnostics = buildDiagnostics(history)
-  const top = dominantBucket(latest)
+  const diagnostics = buildDiagnostics(history, t)
+  const top = dominantBucket(latest, t)
   const latestRows = history.slice(-12).reverse()
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Analytics de memória"
+      title={t('mod.memoryAnalyticsTitle')}
       width={760}
       footer={
         <button type="button" className={controls.btn} onClick={clearMemoryHistory} disabled={history.length === 0}>
           <Trash2 size={14} />
-          Limpar histórico
+          {t('mod.clearHistory')}
         </button>
       }
     >
@@ -179,22 +189,22 @@ export function MemoryAnalyticsModal() {
         <section className={styles.summaryGrid}>
           <div className={styles.metric}>
             <Activity size={16} />
-            <span className={styles.metricLabel}>Agora</span>
+            <span className={styles.metricLabel}>{t('mod.now')}</span>
             <strong>{latest ? formatMb(latest.total_mb) : '-'}</strong>
           </div>
           <div className={styles.metric}>
             <Monitor size={16} />
-            <span className={styles.metricLabel}>Pico</span>
+            <span className={styles.metricLabel}>{t('mod.peak')}</span>
             <strong>{peak ? formatMb(peak.total_mb) : '-'}</strong>
           </div>
           <div className={styles.metric}>
             <Cpu size={16} />
-            <span className={styles.metricLabel}>Média recente</span>
+            <span className={styles.metricLabel}>{t('mod.recentAvg')}</span>
             <strong>{history.length ? formatMb(avg) : '-'}</strong>
           </div>
           <div className={styles.metric}>
             <Layers size={16} />
-            <span className={styles.metricLabel}>Tendência</span>
+            <span className={styles.metricLabel}>{t('mod.trend')}</span>
             <strong className={growth >= 120 ? styles.hot : growth <= -80 ? styles.cool : undefined}>
               {growth >= 0 ? '+' : ''}
               {formatMb(growth)}
@@ -205,10 +215,10 @@ export function MemoryAnalyticsModal() {
         <section className={styles.panel}>
           <div className={styles.panelHeader}>
             <div>
-              <h3>Histórico</h3>
-              <p>{history.length} amostras, últimas leituras no intervalo de polling da titlebar.</p>
+              <h3>{t('mod.history')}</h3>
+              <p>{t('mod.historySubtitle', { count: history.length })}</p>
             </div>
-            {latest ? <span>{formatTime(latest.ts)}</span> : null}
+            {latest ? <span>{formatTime(latest.ts, language)}</span> : null}
           </div>
           <Sparkline samples={history} />
         </section>
@@ -217,8 +227,8 @@ export function MemoryAnalyticsModal() {
           <section className={styles.panel}>
             <div className={styles.panelHeader}>
               <div>
-                <h3>Gargalos</h3>
-                <p>{top ? `${top.label} lidera agora com ${formatMb(top.value)}.` : 'Sem leitura atual.'}</p>
+                <h3>{t('mod.bottlenecks')}</h3>
+                <p>{top ? t('mod.bottleneckLead', { label: top.label, value: formatMb(top.value) }) : t('mod.noCurrentReading')}</p>
               </div>
               <AlertTriangle size={16} />
             </div>
@@ -234,8 +244,8 @@ export function MemoryAnalyticsModal() {
           <section className={styles.panel}>
             <div className={styles.panelHeader}>
               <div>
-                <h3>Composição atual</h3>
-                <p>{latest ? `${latest.process_count} processos rastreados.` : 'Aguardando dados.'}</p>
+                <h3>{t('mod.currentComposition')}</h3>
+                <p>{latest ? t('mod.processesTracked', { count: latest.process_count }) : t('mod.waitingData')}</p>
               </div>
               <TerminalSquare size={16} />
             </div>
@@ -246,25 +256,25 @@ export function MemoryAnalyticsModal() {
         <section className={styles.panel}>
           <div className={styles.panelHeader}>
             <div>
-              <h3>Últimas amostras</h3>
-              <p>Valores separados por app, WebView e terminais.</p>
+              <h3>{t('mod.latestSamples')}</h3>
+              <p>{t('mod.latestSamplesSubtitle')}</p>
             </div>
           </div>
           <div className={styles.table}>
             <div className={`${styles.tableRow} ${styles.tableHead}`}>
-              <span>Hora</span>
-              <span>Total</span>
+              <span>{t('mod.colTime')}</span>
+              <span>{t('mod.colTotal')}</span>
               <span>App</span>
               <span>WebView</span>
               <span>PTY</span>
-              <span>Proc.</span>
+              <span>{t('mod.colProc')}</span>
             </div>
             {latestRows.length === 0 ? (
-              <div className={styles.emptyRows}>Aguardando primeira leitura...</div>
+              <div className={styles.emptyRows}>{t('mod.waitingFirstReading')}</div>
             ) : (
               latestRows.map((sample) => (
                 <div key={sample.ts} className={styles.tableRow}>
-                  <span>{formatTime(sample.ts)}</span>
+                  <span>{formatTime(sample.ts, language)}</span>
                   <strong>{formatMb(sample.total_mb)}</strong>
                   <span>{formatMb(sample.app_mb)}</span>
                   <span>{formatMb(sample.webview_mb)}</span>

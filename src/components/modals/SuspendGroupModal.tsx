@@ -2,10 +2,12 @@ import { useMemo } from 'react'
 
 import { useProjectsStore } from '../../stores/projectsStore'
 import { useUiStore } from '../../stores/uiStore'
+import { useT } from '../../lib/i18n'
 import { Modal } from './Modal'
 import controls from './controls.module.css'
 
 export function SuspendGroupModal() {
+  const t = useT()
   const open = useUiStore((s) => s.openModal === 'suspendGroup')
   const context = useUiStore((s) => s.modalContext) as { groupId?: string } | null
   const closeModal = useUiStore((s) => s.closeModal)
@@ -24,7 +26,7 @@ export function SuspendGroupModal() {
     return {
       terminalCount: groupProjects.reduce((sum, p) => sum + p.terminals.length, 0),
       activeCount: groupProjects.reduce(
-        (sum, p) => sum + p.terminals.filter((t) => !t.disabled).length,
+        (sum, p) => sum + p.terminals.filter((item) => !item.disabled).length,
         0,
       ),
     }
@@ -41,31 +43,29 @@ export function SuspendGroupModal() {
     <Modal
       open={open}
       onClose={closeModal}
-      title="Suspender grupo"
+      title={t('term.suspendGroupTitle')}
       footer={
         <>
           <button type="button" className={controls.btn} onClick={closeModal}>
-            Cancelar
+            {t('term.cancel')}
           </button>
           <button
             type="button"
             className={`${controls.btn} ${controls.btnDanger}`}
             onClick={onConfirm}
           >
-            Suspender
+            {t('term.suspend')}
           </button>
         </>
       }
     >
       <p style={{ fontSize: 13, color: 'var(--fg)', lineHeight: 1.5, margin: '0 0 12px' }}>
-        Tem certeza que deseja suspender o grupo{' '}
-        <strong style={{ color: group.color }}>{group.name}</strong>?
+        {t('term.suspendConfirmBefore')}{' '}
+        <strong style={{ color: group.color }}>{group.name}</strong>
+        {t('term.suspendConfirmAfter')}
       </p>
       <p style={{ fontSize: 12, color: 'var(--fg-muted)', lineHeight: 1.5, margin: 0 }}>
-        Isso vai desabilitar {activeCount > 0 ? <strong>{activeCount}</strong> : '0'} terminal
-        {activeCount !== 1 ? 'is' : ''} ativo{activeCount !== 1 ? 's' : ''} (de {terminalCount}{' '}
-        total) e fechar os containers da workspace. Os processos (PTYs) serão encerrados pra liberar
-        RAM. Você pode reativar o grupo a qualquer momento pelo menu de contexto.
+        {t('term.suspendDetail', { count: activeCount, total: terminalCount })}
       </p>
     </Modal>
   )

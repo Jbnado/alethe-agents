@@ -1,5 +1,8 @@
 export type AgentType = 'shell' | 'claude' | 'codex' | 'opencode'
 
+/** Idiomas suportados pela UI. `en` é o default. */
+export type Locale = 'en' | 'pt-BR'
+
 export type LayoutMode = 'auto' | 'spotlight' | 'sidebar' | 'grid'
 
 /** Posição/tamanho de uma Célula no grid. Coordenadas 1-based (CSS Grid style). */
@@ -125,6 +128,8 @@ export type WorkspaceRecentTab = {
 }
 
 export type Preferences = {
+  /** Idioma da UI. Default 'en'. */
+  language: Locale
   uiTheme: Theme
   /** Zoom global da WebView. 1 = 100%. */
   uiZoom: number
@@ -172,6 +177,7 @@ export type ProjectsFile = {
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
+  language: 'en',
   uiTheme: 'dark',
   uiZoom: 1,
   terminalTheme: null,

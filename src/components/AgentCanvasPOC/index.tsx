@@ -46,6 +46,7 @@ import {
 
 import { AGENT_LIBRARY, type AgentTemplate } from '../../lib/agentLibrary'
 import { getCachedClaudeUsage } from '../../lib/claudeUsageCache'
+import { useT } from '../../lib/i18n'
 import {
   killPty,
   listenPtyExit,
@@ -103,11 +104,11 @@ const USAGE_FALLBACK_THRESHOLD = 80
 /** De quanto em quanto tempo o canvas relê o usage do Claude. */
 const USAGE_POLL_MS = 60_000
 
-function formatReset(resetsAt: string): string {
+function formatReset(resetsAt: string, nowLabel = 'agora'): string {
   if (!resetsAt) return '—'
   const diff = new Date(resetsAt).getTime() - Date.now()
   if (Number.isNaN(diff)) return '—'
-  if (diff <= 0) return 'agora'
+  if (diff <= 0) return nowLabel
   const h = Math.floor(diff / 3_600_000)
   const m = Math.floor((diff % 3_600_000) / 60_000)
   return h > 0 ? `${h}h${m}m` : `${m}m`
@@ -215,6 +216,7 @@ function AgentChip({
   ghost = false,
   action,
 }: AgentChipProps) {
+  const t = useT()
   const Icon = personaIconFor(name)
   const costClass = cost === 'barato' ? styles.costCheap : styles.costExpensive
   return (
@@ -238,7 +240,7 @@ function AgentChip({
       </span>
       <span className={styles.agentChipName}>{name}</span>
       {cost ? <span className={costClass}>{cost}</span> : null}
-      {foreign ? <span className={styles.chipForeign}>externo</span> : null}
+      {foreign ? <span className={styles.chipForeign}>{t('ws.external')}</span> : null}
       <span className={styles.agentChipAction}>{action}</span>
     </div>
   )
@@ -258,6 +260,7 @@ function LibraryItem({
   installed: boolean
   onInstall: () => void
 }) {
+  const t = useT()
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
     id: `lib:${template.name}`,
     disabled: installed,
@@ -278,15 +281,15 @@ function LibraryItem({
         dragging={isDragging}
         action={
           installed ? (
-            <span className={styles.libraryInstalledTag}>instalado</span>
+            <span className={styles.libraryInstalledTag}>{t('ws.installed')}</span>
           ) : (
             <button
               type="button"
               className={styles.chipAction}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={onInstall}
-              title="Instalar agent"
-              aria-label={`Instalar ${template.name}`}
+              title={t('ws.installAgent')}
+              aria-label={t('ws.installAgentName', { name: template.name })}
             >
               <UserPlus size={13} />
             </button>
@@ -324,6 +327,7 @@ export function AgentCanvasPOC() {
 }
 
 function AgentCanvasInner() {
+  const t = useT()
   const setActiveView = useUiStore((s) => s.setActiveView)
   const session = useUiStore((s) => s.agentCanvasSession)
   const terminalTheme = useProjectsStore(
@@ -533,7 +537,7 @@ function AgentCanvasInner() {
 
   const installAgent = (name: string, force = false) => {
     if (!session) return
-    const template = AGENT_LIBRARY.find((t) => t.name === name)
+    const template = AGENT_LIBRARY.find((item) => item.name === name)
     if (!template) return
     invoke<string>('install_agent', {
       folder: session.folder,
@@ -548,7 +552,7 @@ function AgentCanvasInner() {
       })
       .catch((err) => {
         if (String(err) === 'conflict') {
-          if (window.confirm(`Já existe um agent "${name}" neste projeto que NÃO foi criado pelo Alethe. Sobrescrever?`)) {
+          if (window.confirm(t('ws.confirmOverwriteForeignAgent', { name }))) {
             installAgent(name, true)
           }
           return
@@ -560,8 +564,8 @@ function AgentCanvasInner() {
   const uninstallAgent = (agent: InstalledAgent) => {
     if (!session) return
     const msg = agent.from_alethe
-      ? `Remover o agent "${agent.name}" do projeto?`
-      : `O agent "${agent.name}" NÃO foi criado pelo Alethe. Remover mesmo assim?`
+      ? t('ws.confirmRemoveAgent', { name: agent.name })
+      : t('ws.confirmRemoveForeignAgent', { name: agent.name })
     if (!window.confirm(msg)) return
     invoke('uninstall_agent', { folder: session.folder, name: agent.name, force: true })
       .then(() => {
@@ -694,18 +698,18 @@ function AgentCanvasInner() {
         ...codexWorkers.map((w) => ({ id: w.ptyId, done: w.exitedCode !== null })),
       ]
       setEdges(
-        targets.flatMap((t) => {
-          const el = cardRefs.current.get(t.id)
+        targets.flatMap((target) => {
+          const el = cardRefs.current.get(target.id)
           if (!el) return []
           const r = el.getBoundingClientRect()
           return [
             {
-              id: t.id,
+              id: target.id,
               x1,
               y1,
               x2: r.left + r.width / 2 - cRect.left,
               y2: r.top - cRect.top,
-              done: t.done,
+              done: target.done,
             },
           ]
         }),
@@ -800,7 +804,7 @@ function AgentCanvasInner() {
       </div>
       {node.kind === 'teammate' ? (
         <div className={styles.teammateMeta}>
-          {node.team} · {node.turns} turno{node.turns === 1 ? '' : 's'}
+          {node.team} · {t('ws.turns', { count: node.turns })}
         </div>
       ) : null}
       {node.prompt ? <div className={styles.cardPrompt}>{node.prompt}</div> : null}
@@ -814,7 +818,7 @@ function AgentCanvasInner() {
           ))}
           {node.feed.length > MINI_FEED_SIZE ? (
             <div className={styles.feedMore}>
-              +{node.feed.length - MINI_FEED_SIZE} tool calls — clique pra ver tudo
+              {t('ws.moreToolCalls', { count: node.feed.length - MINI_FEED_SIZE })}
             </div>
           ) : null}
         </div>
@@ -839,9 +843,9 @@ function AgentCanvasInner() {
           <header className={styles.topBar}>
             <button type="button" className={styles.backButton} onClick={exitCanvas}>
               <ArrowLeft size={14} />
-              voltar
+              {t('ws.back')}
             </button>
-            <span className={styles.title}>agent canvas</span>
+            <span className={styles.title}>{t('ws.agentCanvasPoc')}</span>
             <div className={styles.topRight}>
               {usage ? (
                 <button
@@ -851,21 +855,23 @@ function AgentCanvasInner() {
                       ? `${styles.usagePill} ${styles.usagePillCrit}`
                       : styles.usagePill
                   }
-                  title={`uso 5h do Claude · reset em ${formatReset(usage.five_hour.resets_at)}\nclique pra forçar o fallback codex (teste)`}
+                  title={t('ws.usagePillTitle', {
+                    reset: formatReset(usage.five_hour.resets_at, t('ws.now')),
+                  })}
                   onClick={() => activateFallback(usage, true)}
                 >
-                  claude 5h {Math.round(usage.five_hour.utilization)}%
+                  {t('ws.claude5h', { pct: Math.round(usage.five_hour.utilization) })}
                 </button>
               ) : null}
               <span className={styles.counter}>
-                {running} running · {done} done
-                {lastEventAt ? '' : ` · aguardando hooks em ${hooksEndpoint?.replace('http://127.0.0.1', ':') ?? '...'}`}
+                {t('ws.runningDone', { running, done })}
+                {lastEventAt ? '' : ` · ${t('ws.waitingHooks', { endpoint: hooksEndpoint?.replace('http://127.0.0.1', ':') ?? '...' })}`}
               </span>
               <button
                 type="button"
                 className={styles.clearButton}
-                onClick={() => spawnCodexWorker('manual', { open: true })}
-                title="Abrir um terminal codex novo (PTY real)"
+                onClick={() => spawnCodexWorker(t('ws.workerManual'), { open: true })}
+                title={t('ws.openNewCodexTerminal')}
               >
                 <Plus size={13} />
                 <CodexIcon size={14} />
@@ -875,7 +881,7 @@ function AgentCanvasInner() {
                 className={styles.clearButton}
                 onClick={clearStore}
                 disabled={nodes.length === 0 && taskList.length === 0}
-                title="Limpar canvas"
+                title={t('ws.clearCanvas')}
               >
                 <Trash2 size={14} />
               </button>
@@ -893,27 +899,27 @@ function AgentCanvasInner() {
               <>
                 <div className={styles.paletteHeader} onPointerDown={startPaletteDrag}>
                   <span className={styles.libraryTitle}>
-                    <Grip size={13} /> biblioteca
+                    <Grip size={13} /> {t('ws.library')}
                   </span>
                   <span className={styles.paletteCount}>{AGENT_LIBRARY.length}</span>
                   <button
                     type="button"
                     className={styles.chipAction}
                     onClick={() => setPaletteOpen(false)}
-                    title="Recolher biblioteca"
-                    aria-label="Recolher biblioteca"
+                    title={t('ws.collapseLibrary')}
+                    aria-label={t('ws.collapseLibrary')}
                   >
                     <X size={13} />
                   </button>
                 </div>
-                <div className={styles.libraryHint}>arrasta pro control plane ou clica pra instalar</div>
+                <div className={styles.libraryHint}>{t('ws.libraryHint')}</div>
                 <div className={styles.paletteGrid}>
-                  {AGENT_LIBRARY.map((t) => (
+                  {AGENT_LIBRARY.map((tpl) => (
                     <LibraryItem
-                      key={t.name}
-                      template={t}
-                      installed={installed.some((a) => a.name === t.name)}
-                      onInstall={() => installAgent(t.name)}
+                      key={tpl.name}
+                      template={tpl}
+                      installed={installed.some((a) => a.name === tpl.name)}
+                      onInstall={() => installAgent(tpl.name)}
                     />
                   ))}
                 </div>
@@ -924,10 +930,10 @@ function AgentCanvasInner() {
                 className={styles.paletteLauncher}
                 onClick={() => setPaletteOpen(true)}
                 onPointerDown={startPaletteDrag}
-                title="Abrir biblioteca de agents"
+                title={t('ws.openAgentLibrary')}
               >
                 <Library size={14} />
-                biblioteca
+                {t('ws.library')}
                 <span className={styles.paletteCount}>{AGENT_LIBRARY.length}</span>
               </button>
             )}
@@ -937,13 +943,15 @@ function AgentCanvasInner() {
             <div className={styles.fallbackBanner}>
               <span className={styles.fallbackDot} />
               <span className={styles.fallbackText}>
-                Claude {Math.round(usage.five_hour.utilization)}% · reset{' '}
-                {formatReset(usage.five_hour.resets_at)} — codex assumindo trabalho pesado
+                {t('ws.fallbackBanner', {
+                  pct: Math.round(usage.five_hour.utilization),
+                  reset: formatReset(usage.five_hour.resets_at, t('ws.now')),
+                })}
               </span>
               <button
                 type="button"
                 className={styles.bannerButton}
-                onClick={() => spawnCodexWorker('fallback manual', { open: true })}
+                onClick={() => spawnCodexWorker(t('ws.workerFallbackManual'), { open: true })}
               >
                 <Plus size={12} /> codex
               </button>
@@ -970,10 +978,10 @@ function AgentCanvasInner() {
             <Bot size={18} />
             <div>
               <div className={styles.planeTitle}>
-                {teamName ? `lead · ${teamName}` : 'control plane'}
+                {teamName ? t('ws.leadTeam', { team: teamName }) : t('ws.controlPlane')}
               </div>
               <div className={styles.planeSubtitle}>
-                {session ? session.folder : 'claude code · sessão principal'}
+                {session ? session.folder : t('ws.claudeMainSession')}
               </div>
             </div>
             <span className={running > 0 ? styles.planeDotActive : styles.planeDot} />
@@ -992,9 +1000,9 @@ function AgentCanvasInner() {
                     <button
                       type="button"
                       className={styles.chipAction}
-                      title="Remover do projeto"
+                      title={t('ws.removeFromProject')}
                       onClick={() => uninstallAgent(agent)}
-                      aria-label={`Remover ${agent.name}`}
+                      aria-label={t('ws.removeAgent', { name: agent.name })}
                     >
                       <X size={13} />
                     </button>
@@ -1036,7 +1044,7 @@ function AgentCanvasInner() {
                   <div className={styles.codexCardFooter}>
                     <span className={styles.cardId}>{w.ptyId}</span>
                     <span className={styles.codexExpandHint}>
-                      <Maximize2 size={11} /> abrir terminal
+                      <Maximize2 size={11} /> {t('ws.openTerminal')}
                     </span>
                   </div>
                 </div>
@@ -1051,12 +1059,12 @@ function AgentCanvasInner() {
           <div className={styles.cardsArea}>
             {nodes.length === 0 ? (
               <div className={styles.empty}>
-                <div>nenhum subagent ainda — manda o prompt de teste no terminal abaixo:</div>
+                <div>{t('ws.noSubagentYet')}</div>
                 <div className={styles.testPrompt}>
                   <code>{TEST_PROMPT}</code>
                   <button type="button" className={styles.clearButton} onClick={copyTestPrompt}>
                     <ClipboardCopy size={13} />
-                    {copied ? 'copiado!' : 'copiar'}
+                    {copied ? t('ws.copied') : t('ws.copy')}
                   </button>
                 </div>
               </div>
@@ -1104,25 +1112,25 @@ function AgentCanvasInner() {
             </span>
             <span className={styles.terminalCwd}>{session.folder}</span>
             {restartHint ? (
-              <span className={styles.economyHint}>agents mudaram — reinicia o claude ↻</span>
+              <span className={styles.economyHint}>{t('ws.agentsChangedRestart')}</span>
             ) : null}
             {claudeExited !== null ? (
-              <span className={styles.terminalExited}>encerrado (code {claudeExited})</span>
+              <span className={styles.terminalExited}>{t('ws.exitedCode', { code: claudeExited })}</span>
             ) : null}
             <button
               type="button"
               className={economyOn ? `${styles.clearButton} ${styles.economyOn}` : styles.clearButton}
               onClick={toggleEconomy}
-              title="Modo economia: escreve/remove agents Haiku e codex-executor em .claude/agents/ da pasta"
+              title={t('ws.economyModeTitle')}
             >
               <PiggyBank size={14} />
-              economia {economyOn ? 'on' : 'off'}
+              {t('ws.economy')} {economyOn ? t('ws.on') : t('ws.off')}
             </button>
             <button
               type="button"
               className={styles.clearButton}
               onClick={restartClaude}
-              title="Reinicia a sessão do claude (recarrega agents e hooks)"
+              title={t('ws.restartClaudeTitle')}
             >
               <RotateCcw size={14} />
             </button>
@@ -1149,7 +1157,7 @@ function AgentCanvasInner() {
                 }}
               />
             ) : (
-              <div className={styles.empty}>gerando settings dos hooks…</div>
+              <div className={styles.empty}>{t('ws.generatingHooksSettings')}</div>
             )}
           </div>
         </div>
@@ -1165,17 +1173,17 @@ function AgentCanvasInner() {
             <div className={styles.codexModal} onClick={(e) => e.stopPropagation()}>
               <div className={styles.terminalHeader}>
                 <span className={styles.codexType}>
-                  <CodexIcon size={16} /> codex worker
+                  <CodexIcon size={16} /> {t('ws.codexWorker')}
                 </span>
                 <span className={styles.terminalCwd}>{w.title}</span>
                 {w.exitedCode !== null ? (
-                  <span className={styles.terminalExited}>encerrado (code {w.exitedCode})</span>
+                  <span className={styles.terminalExited}>{t('ws.exitedCode', { code: w.exitedCode })}</span>
                 ) : null}
                 <button
                   type="button"
                   className={styles.clearButton}
                   onClick={() => killCodexWorker(w.ptyId)}
-                  title="Matar este codex worker"
+                  title={t('ws.killCodexWorker')}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -1183,7 +1191,7 @@ function AgentCanvasInner() {
                   type="button"
                   className={styles.clearButton}
                   onClick={() => setExpandedCodexId(null)}
-                  title="Fechar (mantém o codex rodando em background)"
+                  title={t('ws.closeKeepCodexRunning')}
                 >
                   <X size={14} />
                 </button>

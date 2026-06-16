@@ -1,7 +1,8 @@
 import { Minus, Plus, RotateCcw } from 'lucide-react'
 
+import { LOCALES, useT } from '../../lib/i18n'
 import { getProfileImageUrl, getProfileInitial } from '../../lib/profile'
-import { THEME_OPTIONS } from '../../lib/themes'
+import { THEME_OPTIONS, themeLabel } from '../../lib/themes'
 import { UI_ZOOM_LIMITS, useProjectsStore } from '../../stores/projectsStore'
 import { useUiStore } from '../../stores/uiStore'
 import type { AgentType } from '../../lib/types'
@@ -9,17 +10,19 @@ import { ImageInput } from './ImageInput'
 import { Modal } from './Modal'
 import controls from './controls.module.css'
 
-const AGENTS: { id: AgentType; label: string; description: string }[] = [
-  { id: 'shell', label: 'Shell', description: 'PowerShell · cmd' },
-  { id: 'claude', label: 'Claude Code', description: 'Anthropic CLI' },
-  { id: 'codex', label: 'Codex', description: 'OpenAI CLI' },
-  { id: 'opencode', label: 'OpenCode', description: 'Open source' },
+const AGENTS: { id: AgentType; label: string }[] = [
+  { id: 'shell', label: 'Shell' },
+  { id: 'claude', label: 'Claude Code' },
+  { id: 'codex', label: 'Codex' },
+  { id: 'opencode', label: 'OpenCode' },
 ]
 
 export function PreferencesModal() {
+  const t = useT()
   const open = useUiStore((s) => s.openModal === 'preferences')
   const closeModal = useUiStore((s) => s.closeModal)
   const preferences = useProjectsStore((s) => s.preferences)
+  const setLanguage = useProjectsStore((s) => s.setLanguage)
   const setUiTheme = useProjectsStore((s) => s.setUiTheme)
   const setUiZoom = useProjectsStore((s) => s.setUiZoom)
   const setTerminalTheme = useProjectsStore((s) => s.setTerminalTheme)
@@ -31,8 +34,8 @@ export function PreferencesModal() {
   const initial = getProfileInitial(preferences.displayName)
 
   return (
-    <Modal open={open} onClose={closeModal} title="Preferências" width={520}>
-      <Section title="Perfil">
+    <Modal open={open} onClose={closeModal} title={t('prefs.title')} width={520}>
+      <Section title={t('prefs.profile')}>
         <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr', gap: 12, alignItems: 'center' }}>
           {avatarUrl ? (
             <img
@@ -69,44 +72,59 @@ export function PreferencesModal() {
               className={controls.input}
               value={preferences.displayName}
               onChange={(e) => setPreferences({ displayName: e.target.value })}
-              placeholder="Nome"
+              placeholder={t('prefs.namePlaceholder')}
               maxLength={60}
             />
             <ImageInput
-              label="Foto"
+              label={t('prefs.photoPlaceholder')}
               value={preferences.profileImageUrl}
               onChange={(profileImageUrl) => setPreferences({ profileImageUrl })}
-              placeholder="Link da foto"
-              hint="Use uma URL ou faça upload de uma imagem local."
+              placeholder={t('prefs.photoPlaceholder')}
+              hint={t('image.urlOrUpload')}
             />
           </div>
         </div>
       </Section>
 
-      <Section title="Tema da UI">
+      <Section title={t('prefs.language')}>
         <div className={controls.pillRow}>
-          {THEME_OPTIONS.map((t) => (
+          {LOCALES.map((loc) => (
             <button
-              key={t.id}
+              key={loc.id}
               type="button"
-              className={`${controls.pill} ${preferences.uiTheme === t.id ? controls.pillActive : ''}`}
-              onClick={() => setUiTheme(t.id)}
+              className={`${controls.pill} ${preferences.language === loc.id ? controls.pillActive : ''}`}
+              onClick={() => setLanguage(loc.id)}
             >
-              {t.label}
+              {loc.nativeName}
             </button>
           ))}
         </div>
       </Section>
 
-      <Section title="Zoom da interface">
+      <Section title={t('prefs.uiTheme')}>
+        <div className={controls.pillRow}>
+          {THEME_OPTIONS.map((theme) => (
+            <button
+              key={theme.id}
+              type="button"
+              className={`${controls.pill} ${preferences.uiTheme === theme.id ? controls.pillActive : ''}`}
+              onClick={() => setUiTheme(theme.id)}
+            >
+              {themeLabel(t, theme.id)}
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      <Section title={t('prefs.uiZoom')}>
         <div className={controls.stepperRow}>
           <button
             type="button"
             className={controls.iconBtn}
             onClick={() => setUiZoom(preferences.uiZoom - UI_ZOOM_LIMITS.step)}
             disabled={preferences.uiZoom <= UI_ZOOM_LIMITS.min}
-            title="Diminuir zoom (Ctrl+-)"
-            aria-label="Diminuir zoom"
+            title={t('prefs.zoomDecrease')}
+            aria-label={t('prefs.zoomDecrease')}
           >
             <Minus size={14} />
           </button>
@@ -118,8 +136,8 @@ export function PreferencesModal() {
             className={controls.iconBtn}
             onClick={() => setUiZoom(preferences.uiZoom + UI_ZOOM_LIMITS.step)}
             disabled={preferences.uiZoom >= UI_ZOOM_LIMITS.max}
-            title="Aumentar zoom (Ctrl+=)"
-            aria-label="Aumentar zoom"
+            title={t('prefs.zoomIncrease')}
+            aria-label={t('prefs.zoomIncrease')}
           >
             <Plus size={14} />
           </button>
@@ -128,37 +146,37 @@ export function PreferencesModal() {
             className={controls.iconBtn}
             onClick={() => setUiZoom(1)}
             disabled={preferences.uiZoom === 1}
-            title="Resetar zoom (Ctrl+0)"
-            aria-label="Resetar zoom"
+            title={t('prefs.zoomReset')}
+            aria-label={t('prefs.zoomReset')}
           >
             <RotateCcw size={14} />
           </button>
         </div>
       </Section>
 
-      <Section title="Tema do terminal">
+      <Section title={t('prefs.terminalTheme')}>
         <div className={controls.pillRow}>
           <button
             type="button"
             className={`${controls.pill} ${preferences.terminalTheme === null ? controls.pillActive : ''}`}
             onClick={() => setTerminalTheme(null)}
           >
-            Seguir UI
+            {t('common.followUi')}
           </button>
-          {THEME_OPTIONS.map((t) => (
+          {THEME_OPTIONS.map((theme) => (
             <button
-              key={t.id}
+              key={theme.id}
               type="button"
-              className={`${controls.pill} ${preferences.terminalTheme === t.id ? controls.pillActive : ''}`}
-              onClick={() => setTerminalTheme(t.id)}
+              className={`${controls.pill} ${preferences.terminalTheme === theme.id ? controls.pillActive : ''}`}
+              onClick={() => setTerminalTheme(theme.id)}
             >
-              {t.label}
+              {themeLabel(t, theme.id)}
             </button>
           ))}
         </div>
       </Section>
 
-      <Section title={`Agentes habilitados (${enabledCount}/4)`}>
+      <Section title={t('prefs.enabledAgents', { count: enabledCount })}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {AGENTS.map((a) => {
             const checked = preferences.enabledAgents[a.id]
@@ -186,7 +204,7 @@ export function PreferencesModal() {
                 />
                 <span style={{ flex: 1 }}>
                   <div style={{ fontWeight: 500, fontSize: 13 }}>{a.label}</div>
-                  <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{a.description}</div>
+                  <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{t(`agent.${a.id}.desc`)}</div>
                 </span>
               </label>
             )
@@ -194,7 +212,7 @@ export function PreferencesModal() {
         </div>
       </Section>
 
-      <Section title="Spotify">
+      <Section title={t('prefs.spotify')}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <input
             className={controls.input}
@@ -212,8 +230,11 @@ export function PreferencesModal() {
             spellCheck={false}
           />
           <div style={{ fontSize: 11, color: 'var(--fg-faint)', lineHeight: 1.45 }}>
-            Cadastre <code>http://127.0.0.1:8888/callback</code> como Redirect URI no Spotify Developer Dashboard.
-            Em dev, <code>SPOTIFY_CLIENT_ID</code> e <code>SPOTIFY_CLIENT_SECRET</code> ainda funcionam como fallback.
+            {t('prefs.spotifyHint', {
+              redirect: 'http://127.0.0.1:8888/callback',
+              idEnv: 'SPOTIFY_CLIENT_ID',
+              secretEnv: 'SPOTIFY_CLIENT_SECRET',
+            })}
           </div>
         </div>
       </Section>

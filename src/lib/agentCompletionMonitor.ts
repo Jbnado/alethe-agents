@@ -1,3 +1,4 @@
+import { getLocale, translate } from './i18n'
 import type { AgentType } from './types'
 import { notifyAgentDone } from './notifications'
 
@@ -90,7 +91,7 @@ export class AgentCompletionMonitor {
       this.options.onStatusChange?.('waiting')
       this.options.onComplete?.()
       void notifyAgentDone(
-        `${agentLabel(this.options.agent)} terminou`,
+        translate(getLocale(), 'notif.agentDoneTitle', { agent: agentLabel(this.options.agent) }),
         buildNotificationBody(this.options),
         { agent: this.options.agent },
       )
@@ -105,12 +106,13 @@ export class AgentCompletionMonitor {
 }
 
 function buildNotificationBody(options: AgentCompletionMonitorOptions): string {
+  const locale = getLocale()
   const label = options.label?.trim()
   const cwd = options.cwd?.trim()
-  if (label && cwd) return `${label} respondeu em ${shortPath(cwd)}.`
-  if (label) return `${label} respondeu.`
-  if (cwd) return `Resposta pronta em ${shortPath(cwd)}.`
-  return 'Resposta pronta.'
+  if (label && cwd) return translate(locale, 'notif.respondedInPath', { label, path: shortPath(cwd) })
+  if (label) return translate(locale, 'notif.responded', { label })
+  if (cwd) return translate(locale, 'notif.responseReadyInPath', { path: shortPath(cwd) })
+  return translate(locale, 'notif.responseReady')
 }
 
 function agentLabel(agent: Exclude<AgentType, 'shell'>): string {

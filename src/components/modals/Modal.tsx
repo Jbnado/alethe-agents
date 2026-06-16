@@ -2,6 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
 
+import { useT } from '../../lib/i18n'
 import styles from './Modal.module.css'
 
 type Props = {
@@ -15,6 +16,7 @@ type Props = {
 
 /** Wrapper Radix Dialog padronizado pra todos os modais do app. */
 export function Modal({ open, onClose, title, children, footer, width = 440 }: Props) {
+  const t = useT()
   return (
     <Dialog.Root open={open} onOpenChange={(v) => !v && onClose()}>
       <Dialog.Portal>
@@ -38,7 +40,7 @@ export function Modal({ open, onClose, title, children, footer, width = 440 }: P
           <header className={styles.header}>
             <Dialog.Title className={styles.title}>{title}</Dialog.Title>
             <Dialog.Close asChild>
-              <button type="button" aria-label="Fechar" className={styles.close}>
+              <button type="button" aria-label={t('common.close')} className={styles.close}>
                 <X size={16} />
               </button>
             </Dialog.Close>

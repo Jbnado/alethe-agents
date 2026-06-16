@@ -29,6 +29,7 @@ import {
   useProjectsStore,
 } from '../../stores/projectsStore'
 import { useUiStore } from '../../stores/uiStore'
+import { useT } from '../../lib/i18n'
 import type { AgentType, Group, LayoutMode, Project, Terminal } from '../../lib/types'
 import { AgentIcon } from '../icons/AgentIcons'
 import { SidebarNowPlaying } from '../SidebarNowPlaying'
@@ -46,6 +47,7 @@ const LAYOUTS: { id: LayoutMode; label: string; Icon: LucideIcon }[] = [
 type ContextMenuState = { x: number; y: number; items: MenuItem[] } | null
 
 export function ProjectSidebar() {
+  const t = useT()
   // --- data selectors (reactive) ---
   const projects = useProjectsStore((s) => s.projects)
   const groups = useProjectsStore((s) => s.groups)
@@ -184,38 +186,38 @@ export function ProjectSidebar() {
   const projectMenu = (project: Project): MenuItem[] => [
     {
       kind: 'item',
-      label: 'Editar (nome e cor)…',
+      label: t('ui.sidebar.editNameColor'),
       onClick: () => openModal('editProject', { projectId: project.id }),
     },
     {
       kind: 'item',
-      label: 'Renomear rápido',
+      label: t('ui.sidebar.quickRename'),
       onClick: () => {
-        const name = window.prompt('Novo nome:', project.name)?.trim()
+        const name = window.prompt(t('ui.sidebar.newNamePrompt'), project.name)?.trim()
         if (name) actions.renameProject(project.id, name)
       },
     },
     {
       kind: 'item',
-      label: 'Novo terminal aqui',
+      label: t('ui.sidebar.newTerminalHere'),
       onClick: () => openModal('newTerminal', { projectId: project.id }),
     },
     {
       kind: 'item',
-      label: 'Desenhar layout…',
+      label: t('ui.sidebar.designLayout'),
       onClick: () => openModal('layoutDesigner', { kind: 'project', id: project.id }),
     },
     {
       kind: 'item',
-      label: project.groupId ? 'Tirar do grupo (vai pra Solto)' : 'Mover pra grupo…',
+      label: project.groupId ? t('ui.sidebar.removeFromGroup') : t('ui.sidebar.moveToGroup'),
       onClick: () => {
         if (project.groupId) {
           actions.moveProjectToGroup(project.id, null)
         } else if (groups.length === 0) {
-          window.alert('Crie um grupo primeiro pra poder mover.')
+          window.alert(t('ui.sidebar.createGroupFirst'))
         } else {
           const list = groups.map((g, i) => `${i + 1}. ${g.name}`).join('\n')
-          const pick = window.prompt(`Mover "${project.name}" pra qual grupo?\n\n${list}`, '1')
+          const pick = window.prompt(t('ui.sidebar.moveProjectToWhichGroup', { name: project.name, list }), '1')
           const idx = pick ? Number(pick) - 1 : -1
           if (idx >= 0 && idx < groups.length) {
             actions.moveProjectToGroup(project.id, groups[idx].id)
@@ -225,23 +227,23 @@ export function ProjectSidebar() {
     },
     {
       kind: 'item',
-      label: project.terminals.length > 0 && project.terminals.every((t) => t.disabled)
-        ? 'Reativar projeto'
-        : 'Desabilitar projeto',
+      label: project.terminals.length > 0 && project.terminals.every((term) => term.disabled)
+        ? t('ui.sidebar.reactivateProject')
+        : t('ui.sidebar.disableProject'),
       onClick: () => {
-        const allDisabled = project.terminals.length > 0 && project.terminals.every((t) => t.disabled)
+        const allDisabled = project.terminals.length > 0 && project.terminals.every((term) => term.disabled)
         actions.setProjectDisabled(project.id, !allDisabled)
       },
     },
     { kind: 'separator' },
     {
       kind: 'item',
-      label: 'Apagar projeto',
+      label: t('ui.sidebar.deleteProject'),
       danger: true,
       onClick: () => {
         if (
           window.confirm(
-            `Apagar projeto "${project.name}" e seus ${project.terminals.length} terminal(is)?`,
+            t('ui.sidebar.confirmDeleteProject', { name: project.name, count: project.terminals.length }),
           )
         ) {
           actions.deleteProject(project.id)
@@ -253,30 +255,30 @@ export function ProjectSidebar() {
   const groupMenu = (group: Group): MenuItem[] => [
     {
       kind: 'item',
-      label: 'Editar (nome e cor)…',
+      label: t('ui.sidebar.editNameColor'),
       onClick: () => openModal('editGroup', { groupId: group.id }),
     },
     {
       kind: 'item',
-      label: 'Renomear rápido',
+      label: t('ui.sidebar.quickRename'),
       onClick: () => {
-        const name = window.prompt('Novo nome:', group.name)?.trim()
+        const name = window.prompt(t('ui.sidebar.newNamePrompt'), group.name)?.trim()
         if (name) actions.renameGroup(group.id, name)
       },
     },
     {
       kind: 'item',
-      label: 'Criar subgrupo aqui',
+      label: t('ui.sidebar.createSubgroupHere'),
       onClick: () => openModal('newGroup', { parentGroupId: group.id }),
     },
     {
       kind: 'item',
-      label: 'Desenhar layout…',
+      label: t('ui.sidebar.designLayout'),
       onClick: () => openModal('layoutDesigner', { kind: 'group', id: group.id }),
     },
     {
       kind: 'item',
-      label: group.parentGroupId ? 'Tornar grupo raiz' : 'Mover pra outro grupo…',
+      label: group.parentGroupId ? t('ui.sidebar.makeRootGroup') : t('ui.sidebar.moveToOtherGroup'),
       onClick: () => {
         if (group.parentGroupId) {
           actions.moveGroupToParent(group.id, null)
@@ -288,11 +290,11 @@ export function ProjectSidebar() {
             (g) => g.id !== group.id && !descendants.has(g.id),
           )
           if (candidates.length === 0) {
-            window.alert('Não há outros grupos elegíveis pra ser pai.')
+            window.alert(t('ui.sidebar.noEligibleParentGroups'))
             return
           }
           const list = candidates.map((g, i) => `${i + 1}. ${g.name}`).join('\n')
-          const pick = window.prompt(`Mover "${group.name}" como subgrupo de:\n\n${list}`, '1')
+          const pick = window.prompt(t('ui.sidebar.moveGroupAsSubgroupOf', { name: group.name, list }), '1')
           const idx = pick ? Number(pick) - 1 : -1
           if (idx >= 0 && idx < candidates.length) {
             actions.moveGroupToParent(group.id, candidates[idx].id)
@@ -302,12 +304,12 @@ export function ProjectSidebar() {
     },
     {
       kind: 'item',
-      label: group.collapsed ? 'Expandir' : 'Recolher',
+      label: group.collapsed ? t('ui.sidebar.expand') : t('ui.sidebar.collapse'),
       onClick: () => actions.toggleGroupCollapsed(group.id),
     },
     {
       kind: 'item',
-      label: group.suspended ? 'Reativar grupo' : 'Suspender grupo (libera RAM)',
+      label: group.suspended ? t('ui.sidebar.reactivateGroup') : t('ui.sidebar.suspendGroup'),
       onClick: () => {
         if (group.suspended) {
           actions.resumeGroup(group.id)
@@ -319,17 +321,17 @@ export function ProjectSidebar() {
     { kind: 'separator' },
     {
       kind: 'item',
-      label: 'Apagar grupo (mover projetos pra Solto)',
+      label: t('ui.sidebar.deleteGroupKeepProjects'),
       onClick: () => actions.deleteGroup(group.id, 'unassign'),
     },
     {
       kind: 'item',
-      label: 'Apagar grupo + projetos',
+      label: t('ui.sidebar.deleteGroupAndProjects'),
       danger: true,
       onClick: () => {
         if (
           window.confirm(
-            `Apagar grupo "${group.name}" e os ${group.projectIds.length} projeto(s) dentro? Não dá pra desfazer.`,
+            t('ui.sidebar.confirmDeleteGroupCascade', { name: group.name, count: group.projectIds.length }),
           )
         ) {
           actions.deleteGroup(group.id, 'cascade')
@@ -338,35 +340,35 @@ export function ProjectSidebar() {
     },
   ]
 
-  const terminalMenu = (projectId: string, t: Terminal): MenuItem[] => {
-    const inSplit = openPaneSets[projectId]?.has(t.id) ?? false
+  const terminalMenu = (projectId: string, term: Terminal): MenuItem[] => {
+    const inSplit = openPaneSets[projectId]?.has(term.id) ?? false
     return [
       {
         kind: 'item',
-        label: 'Renomear',
+        label: t('ui.sidebar.rename'),
         onClick: () => {
-          const name = window.prompt('Novo nome:', t.name)?.trim()
-          if (name) actions.renameTerminal(projectId, t.id, name)
+          const name = window.prompt(t('ui.sidebar.newNamePrompt'), term.name)?.trim()
+          if (name) actions.renameTerminal(projectId, term.id, name)
         },
       },
       {
         kind: 'item',
-        label: inSplit ? 'Ocultar do split' : 'Mostrar no split',
-        onClick: () => actions.togglePane(projectId, t.id),
+        label: inSplit ? t('ui.sidebar.hideFromSplit') : t('ui.sidebar.showInSplit'),
+        onClick: () => actions.togglePane(projectId, term.id),
       },
       {
         kind: 'item',
-        label: t.disabled ? 'Reativar' : 'Desabilitar',
-        onClick: () => actions.setTerminalDisabled(projectId, t.id, !t.disabled),
+        label: term.disabled ? t('ui.sidebar.reactivate') : t('ui.sidebar.disable'),
+        onClick: () => actions.setTerminalDisabled(projectId, term.id, !term.disabled),
       },
       { kind: 'separator' },
       {
         kind: 'item',
-        label: 'Apagar terminal',
+        label: t('ui.sidebar.deleteTerminal'),
         danger: true,
         onClick: () => {
-          if (window.confirm(`Apagar terminal "${t.name}"?`)) {
-            actions.deleteTerminal(projectId, t.id)
+          if (window.confirm(t('ui.sidebar.confirmDeleteTerminal', { name: term.name }))) {
+            actions.deleteTerminal(projectId, term.id)
           }
         },
       },
@@ -467,22 +469,22 @@ export function ProjectSidebar() {
           type="button"
           className={`${styles.homeBtn} ${activeView === 'home' ? styles.homeBtnActive : ''}`}
           onClick={() => setActiveView('home')}
-          title="Home (Ctrl+Shift+H)"
-          aria-label="Home"
+          title={t('ui.sidebar.homeTitle', { shortcut: 'Ctrl+Shift+H' })}
+          aria-label={t('ui.sidebar.home')}
         >
           <Home size={14} />
-          <span>Home</span>
+          <span>{t('ui.sidebar.home')}</span>
         </button>
       </div>
       <header className={styles.header}>
-        <span className={styles.title}>Projetos</span>
+        <span className={styles.title}>{t('ui.sidebar.projects')}</span>
         <div className={styles.headerActions}>
           <button
             type="button"
             className={styles.iconBtn}
             onClick={() => openModal('newGroup')}
-            title="Novo grupo (Ctrl+Shift+G)"
-            aria-label="Novo grupo"
+            title={t('ui.sidebar.newGroupTitle', { shortcut: 'Ctrl+Shift+G' })}
+            aria-label={t('ui.sidebar.newGroup')}
           >
             <FolderPlus size={14} />
           </button>
@@ -490,8 +492,8 @@ export function ProjectSidebar() {
             type="button"
             className={styles.iconBtn}
             onClick={() => openModal('newProject')}
-            title="Novo projeto (Ctrl+Shift+P)"
-            aria-label="Novo projeto"
+            title={t('ui.sidebar.newProjectTitle', { shortcut: 'Ctrl+Shift+P' })}
+            aria-label={t('ui.sidebar.newProject')}
           >
             <Plus size={14} />
           </button>
@@ -502,13 +504,13 @@ export function ProjectSidebar() {
         <div className={styles.list}>
           {projects.length === 0 && groups.length === 0 ? (
             <div className={styles.empty}>
-              Nenhum projeto.
+              {t('ui.sidebar.noProjects')}
               <button
                 type="button"
                 onClick={() => openModal('newProject')}
                 className={styles.emptyBtn}
               >
-                Criar primeiro
+                {t('ui.sidebar.createFirst')}
               </button>
             </div>
           ) : (
@@ -536,6 +538,7 @@ export function ProjectSidebar() {
 }
 
 function WorkspaceLayoutFooter() {
+  const t = useT()
   const containerCount = useProjectsStore((s) => s.workspace.containers.length)
   const hasCustom = useProjectsStore((s) => Boolean(s.preferences.workspaceGridLayout))
   const openModal = useUiStore((s) => s.openModal_)
@@ -547,25 +550,26 @@ function WorkspaceLayoutFooter() {
         type="button"
         className={`${styles.layoutBtn} ${hasCustom ? styles.layoutBtnActive : ''}`}
         onClick={() => openModal('layoutDesigner', { kind: 'workspace' })}
-        title="Desenhar layout da workspace"
-        aria-label="Desenhar layout"
+        title={t('ui.sidebar.designWorkspaceLayout')}
+        aria-label={t('ui.sidebar.designLayoutShort')}
         style={{ width: 'auto', padding: '0 10px', fontSize: 11, gap: 6 }}
       >
         <Grid3x3 size={12} />
-        <span>{hasCustom ? 'editar grid' : 'desenhar grid'}</span>
+        <span>{hasCustom ? t('ui.sidebar.editGrid') : t('ui.sidebar.drawGrid')}</span>
       </button>
     </div>
   )
 }
 
 function LayoutFooter() {
+  const t = useT()
   const project = useProjectsStore(selectActiveProject)
   const container = useProjectsStore(selectActiveContainer)
   const setLayoutMode = useProjectsStore((s) => s.setLayoutMode)
   if (!project || !container || container.paneIds.length < 2) return null
   return (
     <div className={styles.layoutFooter}>
-      <span className={styles.layoutLabel}>Organização</span>
+      <span className={styles.layoutLabel}>{t('ui.sidebar.organization')}</span>
       <div className={styles.layoutSwitch}>
         {LAYOUTS.map((opt) => {
           const Icon = opt.Icon
@@ -636,6 +640,7 @@ function GroupNode({
   onOpenAll,
   onOpenOnly,
 }: GroupNodeProps) {
+  const t = useT()
   const dropZone = useDroppable({ id: `group:${group.id}` })
   const draggable = useDraggable({ id: `grp:${group.id}` })
   const setRefs = (node: HTMLDivElement | null) => {
@@ -670,14 +675,16 @@ function GroupNode({
           e.preventDefault()
           onMenu(e)
         }}
-        title="Abrir todos os projetos do grupo na workspace"
+        title={t('ui.sidebar.openAllGroupProjects')}
       >
         <ChevronRight size={12} className={styles.groupChevron} />
         <GroupBadge iconUrl={group.iconUrl} color={group.color} />
         <span className={styles.groupName}>{group.name}</span>
         {group.suspended && <Pause size={10} className={styles.groupSuspendedIcon} />}
         <span className={styles.groupCount}>
-          {group.projectIds.length} {group.projectIds.length === 1 ? 'projeto' : 'projetos'}
+          {group.projectIds.length === 1
+            ? t('ui.sidebar.projectCountOne', { count: group.projectIds.length })
+            : t('ui.sidebar.projectCountOther', { count: group.projectIds.length })}
         </span>
       </div>
     )
@@ -700,7 +707,7 @@ function GroupNode({
           e.stopPropagation()
           onOpenOnly()
         }}
-        title={group.suspended ? 'Grupo suspenso — clique direito pra reativar' : 'Abrir todos os projetos do grupo na workspace'}
+        title={group.suspended ? t('ui.sidebar.groupSuspendedHint') : t('ui.sidebar.openAllGroupProjects')}
         {...draggable.attributes}
         {...draggable.listeners}
       >
@@ -711,7 +718,7 @@ function GroupNode({
             e.stopPropagation()
             onToggle()
           }}
-          aria-label="Recolher"
+          aria-label={t('ui.sidebar.collapse')}
         >
           <ChevronDown size={11} />
         </button>
@@ -725,8 +732,8 @@ function GroupNode({
             e.stopPropagation()
             onAddProject()
           }}
-          title="Novo projeto neste grupo"
-          aria-label="Novo projeto neste grupo"
+          title={t('ui.sidebar.newProjectInGroup')}
+          aria-label={t('ui.sidebar.newProjectInGroup')}
         >
           <Plus size={11} />
         </button>
@@ -734,7 +741,7 @@ function GroupNode({
       <div className={styles.groupBody}>
         {childGroups.map((cg) => renderChildGroup(cg))}
         {projects.length === 0 && childGroups.length === 0 ? (
-          <div className={styles.groupEmpty}>Sem projetos. Arraste um aqui ou clique +.</div>
+          <div className={styles.groupEmpty}>{t('ui.sidebar.groupEmpty')}</div>
         ) : (
           projects.map((p) => renderProject(p))
         )}
@@ -766,13 +773,14 @@ function UngroupedSection({
   projects: Project[]
   renderProject: (p: Project) => React.ReactNode
 }) {
+  const t = useT()
   const { setNodeRef, isOver } = useDroppable({ id: 'group:ungrouped' })
   return (
     <div
       ref={setNodeRef}
       className={`${styles.ungroupedSection} ${isOver ? styles.groupDropTarget : ''}`}
     >
-      <div className={styles.ungroupedHeader}>Solto</div>
+      <div className={styles.ungroupedHeader}>{t('ui.sidebar.ungrouped')}</div>
       <div className={styles.ungroupedBody}>{projects.map((p) => renderProject(p))}</div>
     </div>
   )
@@ -803,6 +811,7 @@ function ProjectNode({
   onTerminalMenu,
   onAddTerminal,
 }: ProjectNodeProps) {
+  const t = useT()
   const { setNodeRef: dropRef, isOver } = useDroppable({ id: `proj:${project.id}` })
   const draggable = useDraggable({ id: `proj:${project.id}` })
   const setRefs = (node: HTMLDivElement | null) => {
@@ -810,7 +819,7 @@ function ProjectNode({
     draggable.setNodeRef(node)
   }
 
-  const allDisabled = project.terminals.length > 0 && project.terminals.every((t) => t.disabled)
+  const allDisabled = project.terminals.length > 0 && project.terminals.every((term) => term.disabled)
 
   return (
     <div className={`${styles.projectNode} ${allDisabled ? styles.projectDisabled : ''}`} ref={setRefs}>
@@ -834,7 +843,7 @@ function ProjectNode({
             e.stopPropagation()
             onToggleCollapsed()
           }}
-          aria-label={project.collapsed ? 'Expandir' : 'Colapsar'}
+          aria-label={project.collapsed ? t('ui.sidebar.expand') : t('ui.sidebar.collapse')}
         >
           {project.collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
         </button>
@@ -851,8 +860,8 @@ function ProjectNode({
             e.stopPropagation()
             onAddTerminal()
           }}
-          title="Novo terminal"
-          aria-label="Novo terminal"
+          title={t('ui.sidebar.newTerminal')}
+          aria-label={t('ui.sidebar.newTerminal')}
         >
           <Plus size={12} />
         </button>
@@ -860,14 +869,14 @@ function ProjectNode({
 
       {!project.collapsed && project.terminals.length > 0 ? (
         <div className={styles.terminals}>
-          {project.terminals.map((t) => (
+          {project.terminals.map((term) => (
             <TerminalNode
-              key={t.id}
+              key={term.id}
               project={project}
-              terminal={t}
-              selected={openPanes?.has(t.id) ?? false}
-              onClick={() => onTerminalClick(t)}
-              onMenu={(e) => onTerminalMenu(t, e)}
+              terminal={term}
+              selected={openPanes?.has(term.id) ?? false}
+              onClick={() => onTerminalClick(term)}
+              onMenu={(e) => onTerminalMenu(term, e)}
             />
           ))}
         </div>
@@ -887,6 +896,7 @@ type TerminalNodeProps = {
 }
 
 function TerminalNode({ project, terminal, selected, onClick, onMenu }: TerminalNodeProps) {
+  const t = useT()
   const terminalTheme = useProjectsStore(
     (s) => s.preferences.terminalTheme ?? s.preferences.uiTheme,
   )
@@ -894,11 +904,11 @@ function TerminalNode({ project, terminal, selected, onClick, onMenu }: Terminal
     id: `term:${project.id}:${terminal.id}`,
   })
 
-  const activeTab = terminal.tabs.find((t) => t.id === terminal.activeTabId) ?? terminal.tabs[0]
-  const uniqueTypes = Array.from(new Set(terminal.tabs.map((t) => t.type))) as AgentType[]
+  const activeTab = terminal.tabs.find((tab) => tab.id === terminal.activeTabId) ?? terminal.tabs[0]
+  const uniqueTypes = Array.from(new Set(terminal.tabs.map((tab) => tab.type))) as AgentType[]
   const orderedTypes =
     activeTab && uniqueTypes.length > 1
-      ? [activeTab.type, ...uniqueTypes.filter((t) => t !== activeTab.type)]
+      ? [activeTab.type, ...uniqueTypes.filter((type) => type !== activeTab.type)]
       : uniqueTypes
   const hasUnreadCompletion = terminal.tabs.some((tab) => tab.completionUnread)
 
@@ -931,7 +941,7 @@ function TerminalNode({ project, terminal, selected, onClick, onMenu }: Terminal
       </span>
       <span className={styles.terminalName}>{terminal.name}</span>
       {hasUnreadCompletion ? (
-        <span className={styles.doneBadge} title="Resposta pronta">
+        <span className={styles.doneBadge} title={t('ui.terminal.responseReady')}>
           !
         </span>
       ) : null}

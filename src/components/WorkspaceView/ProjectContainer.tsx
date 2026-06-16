@@ -3,6 +3,7 @@ import { ChevronRight, GripVertical, Maximize2, Minimize2, Minus } from 'lucide-
 import { memo, useMemo } from 'react'
 
 import type { Group, Project, Terminal, WorkspaceContainer } from '../../lib/types'
+import { useT } from '../../lib/i18n'
 import { useProjectsStore } from '../../stores/projectsStore'
 import { useUiStore } from '../../stores/uiStore'
 import { PaneArea } from './PaneArea'
@@ -22,6 +23,7 @@ export const ProjectContainer = memo(function ProjectContainer({
   group,
   isFullscreen = false,
 }: ProjectContainerProps) {
+  const t = useT()
   const setCollapsed = useProjectsStore((s) => s.setContainerCollapsed)
   const setFullscreen = useProjectsStore((s) => s.setFullscreenContainer)
   const setWorkspaceFlat = useProjectsStore((s) => s.setWorkspaceFlat)
@@ -160,7 +162,7 @@ export const ProjectContainer = memo(function ProjectContainer({
         className={styles.collapsed}
         style={{ ['--container-accent' as string]: accent }}
         onClick={() => setCollapsed(project.id, false)}
-        title={`${group ? group.name + ' · ' : ''}${project.name} (clique pra expandir)`}
+        title={`${group ? group.name + ' · ' : ''}${t('ws.containerExpandHint', { name: project.name })}`}
       >
         {project.iconUrl ? (
           <img src={project.iconUrl} alt="" className={styles.projectIcon} />
@@ -189,8 +191,8 @@ export const ProjectContainer = memo(function ProjectContainer({
             className={styles.dragHandle}
             {...draggable.attributes}
             {...draggable.listeners}
-            title="Arrastar pra reordenar container"
-            aria-label="Arrastar container"
+            title={t('ws.dragToReorderContainer')}
+            aria-label={t('ws.dragContainer')}
           >
             <GripVertical size={11} />
           </button>
@@ -212,8 +214,8 @@ export const ProjectContainer = memo(function ProjectContainer({
               e.stopPropagation()
               setCollapsed(project.id, true)
             }}
-            title="Recolher container"
-            aria-label="Recolher"
+            title={t('ws.collapseContainer')}
+            aria-label={t('ws.collapse')}
           >
             <ChevronRight size={11} />
           </button>
@@ -230,8 +232,8 @@ export const ProjectContainer = memo(function ProjectContainer({
               setActiveGroupTab(project.groupId)
               setFullscreen(project.id)
             }}
-            title={isFullscreen ? 'Sair do fullscreen' : 'Container em fullscreen'}
-            aria-label="Toggle fullscreen"
+            title={isFullscreen ? t('ws.exitFullscreen') : t('ws.containerFullscreen')}
+            aria-label={t('ws.toggleFullscreen')}
           >
             {isFullscreen ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
           </button>
@@ -242,8 +244,8 @@ export const ProjectContainer = memo(function ProjectContainer({
               e.stopPropagation()
               closeContainer(project.id)
             }}
-            title="Fechar container (PTYs continuam vivos)"
-            aria-label="Fechar"
+            title={t('ws.closeContainer')}
+            aria-label={t('ws.close')}
           >
             <Minus size={11} />
           </button>
@@ -251,7 +253,7 @@ export const ProjectContainer = memo(function ProjectContainer({
       </div>
       <div className={styles.body}>
         {terminals.length === 0 ? (
-          <div className={styles.empty}>Sem panes abertos.</div>
+          <div className={styles.empty}>{t('ws.noPanesOpen')}</div>
         ) : (
           <PaneArea
             projectId={project.id}
@@ -266,7 +268,7 @@ export const ProjectContainer = memo(function ProjectContainer({
         <div
           className={styles.gridResize}
           onPointerDown={startGridResize}
-          title="Arrastar pra esticar/encolher span"
+          title={t('ws.dragToResizeSpan')}
         />
       ) : null}
     </div>

@@ -23,6 +23,7 @@ type ModalKind =
   | 'suspendGroup'
   | 'memoryAnalytics'
   | 'themePicker'
+  | 'profiles'
   | null
 
 export type ActiveView = 'home' | 'workspace' | 'agentCanvas'

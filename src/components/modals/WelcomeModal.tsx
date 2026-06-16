@@ -2,6 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
+import { useT } from '../../lib/i18n'
 import { getProfileImageUrl, getProfileInitial } from '../../lib/profile'
 import { useProjectsStore } from '../../stores/projectsStore'
 import { useUiStore } from '../../stores/uiStore'
@@ -17,6 +18,7 @@ function daysSince(ts: number | null): number {
 }
 
 export function WelcomeModal() {
+  const t = useT()
   const open = useUiStore((s) => s.openModal === 'welcome')
   const closeModal = useUiStore((s) => s.closeModal)
   const preferences = useProjectsStore((s) => s.preferences)
@@ -37,7 +39,7 @@ export function WelcomeModal() {
           aria-describedby={undefined}
         >
           <Dialog.Close asChild>
-            <button type="button" aria-label="Fechar" className={styles.close}>
+            <button type="button" aria-label={t('common.close')} className={styles.close}>
               <X size={16} />
             </button>
           </Dialog.Close>
@@ -50,22 +52,22 @@ export function WelcomeModal() {
                 <img
                   className={styles.avatar}
                   src={avatarUrl}
-                  alt={`Foto de ${displayName}`}
+                  alt={t('welcome.photoAlt', { name: displayName })}
                   onError={() => setImgFailed(true)}
                 />
               )}
             </div>
 
             <div className={styles.eyebrow}>
-              Dia {days} no {PRODUCT_NAME}
+              {t('welcome.dayCount', { days, product: PRODUCT_NAME })}
             </div>
 
             <Dialog.Title className={styles.title}>
-              Olá, {displayName}
+              {t('welcome.greeting', { name: displayName })}
             </Dialog.Title>
 
             <p className={styles.subtitle}>
-              Bem-vindo de volta. Vamos orquestrar seus terminais de hoje?
+              {t('welcome.subtitle')}
             </p>
 
             <div className={styles.actions}>
@@ -74,14 +76,14 @@ export function WelcomeModal() {
                 className={styles.secondary}
                 onClick={closeModal}
               >
-                Pular
+                {t('common.skip')}
               </button>
               <button
                 type="button"
                 className={styles.primary}
                 onClick={closeModal}
               >
-                Começar
+                {t('common.start')}
               </button>
             </div>
           </div>

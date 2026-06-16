@@ -1,6 +1,7 @@
 import { RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { getCachedClaudeUsage } from '../../lib/claudeUsageCache'
+import { translate, getLocale, useT } from '../../lib/i18n'
 import type { ClaudeUsage } from '../../lib/tauri'
 import { useUiStore } from '../../stores/uiStore'
 import { ClaudeIcon, CodexIcon } from '../icons/AgentIcons'
@@ -12,7 +13,7 @@ function formatResetTime(resetsAt: string): string {
   try {
     const diff = new Date(resetsAt).getTime() - Date.now()
     if (Number.isNaN(diff)) return '—'
-    if (diff <= 0) return 'resetando…'
+    if (diff <= 0) return translate(getLocale(), 'widget.resetting')
     const h = Math.floor(diff / 3_600_000)
     const m = Math.floor((diff % 3_600_000) / 60_000)
     return h > 0 ? `${h}h ${m}m` : `${m}m`
@@ -32,6 +33,7 @@ function pct(v: number): string {
 }
 
 function ClaudeCard({ usage }: { usage: ClaudeUsage | null }) {
+  const t = useT()
   const setClaudeUsage = useUiStore((s) => s.setClaudeUsage)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -59,7 +61,7 @@ function ClaudeCard({ usage }: { usage: ClaudeUsage | null }) {
         className={styles.usageRefreshBtn}
         onClick={handleRefresh}
         disabled={refreshing}
-        title={usage ? 'Atualizar uso' : 'Tentar novamente'}
+        title={usage ? t('widget.refreshUsage') : t('widget.tryAgain')}
       >
         <RefreshCw size={12} className={refreshing ? styles.usageRefreshSpin : undefined} />
       </button>
@@ -72,10 +74,10 @@ function ClaudeCard({ usage }: { usage: ClaudeUsage | null }) {
         {header}
         <div className={styles.usageMain}>
           <div className={styles.usageMainValue}>—</div>
-          <div className={styles.usageMainLabel}>sem token configurado</div>
+          <div className={styles.usageMainLabel}>{t('widget.noTokenConfigured')}</div>
         </div>
         <div className={styles.usageBody}>
-          <div className={styles.usageEmpty}>conecte para ver o uso</div>
+          <div className={styles.usageEmpty}>{t('widget.connectToSeeUsage')}</div>
         </div>
       </div>
     )
@@ -88,28 +90,28 @@ function ClaudeCard({ usage }: { usage: ClaudeUsage | null }) {
       <div className={styles.usageMain}>
         <div className={styles.usageMainValue}>{pct(usage.five_hour.utilization)}</div>
         <div className={styles.usageMainLabel}>
-          <span>uso 5h</span>
+          <span>{t('widget.usage5h')}</span>
           <span>·</span>
-          <span>reset em {formatResetTime(usage.five_hour.resets_at)}</span>
+          <span>{t('widget.resetIn', { time: formatResetTime(usage.five_hour.resets_at) })}</span>
         </div>
       </div>
 
       <div className={styles.usageBody}>
         <Meter
           label="5h"
-          resetLabel={`resets in ${formatResetTime(usage.five_hour.resets_at)}`}
+          resetLabel={t('widget.resetsIn', { time: formatResetTime(usage.five_hour.resets_at) })}
           value={pct(usage.five_hour.utilization)}
           util={usage.five_hour.utilization}
         />
         <Meter
-          label="semana"
-          resetLabel={`resets in ${formatResetTime(usage.seven_day.resets_at)}`}
+          label={t('widget.week')}
+          resetLabel={t('widget.resetsIn', { time: formatResetTime(usage.seven_day.resets_at) })}
           value={pct(usage.seven_day.utilization)}
           util={usage.seven_day.utilization}
         />
         <Meter
           label="opus"
-          resetLabel={`resets in ${formatResetTime(usage.seven_day_opus.resets_at)}`}
+          resetLabel={t('widget.resetsIn', { time: formatResetTime(usage.seven_day_opus.resets_at) })}
           value={pct(usage.seven_day_opus.utilization)}
           util={usage.seven_day_opus.utilization}
         />
@@ -119,6 +121,7 @@ function ClaudeCard({ usage }: { usage: ClaudeUsage | null }) {
 }
 
 function CodexCard() {
+  const t = useT()
   return (
     <div className={styles.usageCard}>
       <div className={styles.usageHead}>
@@ -132,16 +135,16 @@ function CodexCard() {
       <div className={styles.usageMain}>
         <div className={styles.usageMainValue}>2.4M / 5M</div>
         <div className={styles.usageMainLabel}>
-          <span>tokens hoje</span>
+          <span>{t('widget.tokensToday')}</span>
           <span>·</span>
           <span>48%</span>
         </div>
       </div>
 
       <div className={styles.usageBody}>
-        <Meter label="hoje" resetLabel="reset 00:00" value="2.4M / 5M" util={48} fillClass={styles.meterFillCodex} />
-        <Meter label="semana" resetLabel="7 dias" value="11.2M / 30M" util={37} fillClass={styles.meterFillCodex} />
-        <Meter label="requests" resetLabel="por minuto" value="3 / 60" util={5} fillClass={styles.meterFillCodex} />
+        <Meter label={t('widget.today')} resetLabel={t('widget.reset0000')} value="2.4M / 5M" util={48} fillClass={styles.meterFillCodex} />
+        <Meter label={t('widget.week')} resetLabel={t('widget.sevenDays')} value="11.2M / 30M" util={37} fillClass={styles.meterFillCodex} />
+        <Meter label="requests" resetLabel={t('widget.perMinute')} value="3 / 60" util={5} fillClass={styles.meterFillCodex} />
       </div>
     </div>
   )

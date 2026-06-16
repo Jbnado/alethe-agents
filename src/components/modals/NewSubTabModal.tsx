@@ -6,6 +6,7 @@ import { useProjectsStore } from '../../stores/projectsStore'
 import { pickDirectory } from '../../lib/dialog'
 import { UNRESTRICTED_FLAG, type AgentType } from '../../lib/types'
 import { AgentIcon } from '../icons/AgentIcons'
+import { useT } from '../../lib/i18n'
 import { Modal } from './Modal'
 import controls from './controls.module.css'
 import picker from './agentPicker.module.css'
@@ -18,6 +19,7 @@ const AGENTS: { type: AgentType; label: string }[] = [
 ]
 
 export function NewSubTabModal() {
+  const t = useT()
   const open = useUiStore((s) => s.openModal === 'newSubTab')
   const context = useUiStore((s) => s.modalContext) as
     | { projectId?: string; terminalId?: string }
@@ -31,7 +33,7 @@ export function NewSubTabModal() {
   const terminal = useProjectsStore((s) => {
     if (!context?.projectId || !context?.terminalId) return null
     const project = s.projects.find((p) => p.id === context.projectId)
-    return project?.terminals.find((t) => t.id === context.terminalId) ?? null
+    return project?.terminals.find((item) => item.id === context.terminalId) ?? null
   })
 
   const [type, setType] = useState<AgentType>('shell')
@@ -45,7 +47,7 @@ export function NewSubTabModal() {
 
   const visibleAgents = AGENTS.filter((a) => enabled[a.type])
   const inheritedCwd = useMemo(() => {
-    const activeTab = terminal?.tabs.find((t) => t.id === terminal.activeTabId) ?? terminal?.tabs[0]
+    const activeTab = terminal?.tabs.find((item) => item.id === terminal.activeTabId) ?? terminal?.tabs[0]
     return activeTab?.cwd?.trim() || terminal?.cwd?.trim() || ''
   }, [terminal])
 
@@ -85,11 +87,11 @@ export function NewSubTabModal() {
         reset()
         closeModal()
       }}
-      title="Nova tab"
+      title={t('term.newSubTabTitle')}
       footer={
         <>
           <button type="button" className={controls.btn} onClick={closeModal}>
-            Cancelar
+            {t('term.cancel')}
           </button>
           <button
             type="button"
@@ -97,13 +99,13 @@ export function NewSubTabModal() {
             onClick={submit}
             disabled={!context?.terminalId}
           >
-            Adicionar
+            {t('term.add')}
           </button>
         </>
       }
     >
       <div className={controls.field}>
-        <label className={controls.label}>Tipo</label>
+        <label className={controls.label}>{t('term.type')}</label>
         <div className={picker.list}>
           {visibleAgents.map((a) => {
             const active = type === a.type
@@ -130,10 +132,10 @@ export function NewSubTabModal() {
                       }}
                       title={
                         unrestricted[a.type]
-                          ? `Modo irrestrito ATIVO (${UNRESTRICTED_FLAG[a.type]})`
-                          : 'Ativar modo irrestrito'
+                          ? t('term.unrestrictedActive', { flag: UNRESTRICTED_FLAG[a.type] ?? '' })
+                          : t('term.unrestrictedEnable')
                       }
-                      aria-label="Modo irrestrito"
+                      aria-label={t('term.unrestricted')}
                     >
                       <Zap size={14} className={unrestricted[a.type] ? picker.bolt : ''} />
                     </button>
@@ -146,8 +148,8 @@ export function NewSubTabModal() {
                       setType(a.type)
                       void browse()
                     }}
-                    title={active && (cwd || inheritedCwd) ? cwd || inheritedCwd : 'Escolher pasta'}
-                    aria-label="Escolher pasta"
+                    title={active && (cwd || inheritedCwd) ? cwd || inheritedCwd : t('term.chooseFolder')}
+                    aria-label={t('term.chooseFolder')}
                   >
                     {active && (cwd || inheritedCwd) ? <FolderCheck size={14} /> : <Folder size={14} />}
                   </button>
@@ -158,20 +160,20 @@ export function NewSubTabModal() {
         </div>
       </div>
       <div className={controls.field}>
-        <label className={controls.label}>Pasta (cwd)</label>
+        <label className={controls.label}>{t('term.folderCwd')}</label>
         <div className={controls.cwdRow}>
           <input
             className={controls.input}
             value={cwd}
             onChange={(e) => setCwd(e.target.value)}
-            placeholder={inheritedCwd || '(default)'}
+            placeholder={inheritedCwd || t('term.defaultPlaceholder')}
           />
           <button
             type="button"
             className={controls.btn}
             onClick={browse}
-            aria-label="Escolher pasta"
-            title="Escolher pasta"
+            aria-label={t('term.chooseFolder')}
+            title={t('term.chooseFolder')}
           >
             <Folder size={14} />
           </button>

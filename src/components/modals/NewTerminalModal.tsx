@@ -6,6 +6,7 @@ import { getProjectDefaultCwd, useProjectsStore } from '../../stores/projectsSto
 import { pickDirectory } from '../../lib/dialog'
 import { UNRESTRICTED_FLAG, type AgentType } from '../../lib/types'
 import { AgentIcon } from '../icons/AgentIcons'
+import { useT } from '../../lib/i18n'
 import { Modal } from './Modal'
 import controls from './controls.module.css'
 import picker from './agentPicker.module.css'
@@ -18,6 +19,7 @@ const AGENTS: { type: AgentType; label: string }[] = [
 ]
 
 export function NewTerminalModal() {
+  const t = useT()
   const open = useUiStore((s) => s.openModal === 'newTerminal')
   const context = useUiStore((s) => s.modalContext) as { projectId?: string } | null
   const closeModal = useUiStore((s) => s.closeModal)
@@ -83,11 +85,11 @@ export function NewTerminalModal() {
         reset()
         closeModal()
       }}
-      title="Novo terminal"
+      title={t('term.newTerminalTitle')}
       footer={
         <>
           <button type="button" className={controls.btn} onClick={closeModal}>
-            Cancelar
+            {t('term.cancel')}
           </button>
           <button
             type="button"
@@ -95,13 +97,13 @@ export function NewTerminalModal() {
             onClick={submit}
             disabled={!context?.projectId}
           >
-            Criar
+            {t('term.create')}
           </button>
         </>
       }
     >
       <div className={controls.field}>
-        <label className={controls.label}>Tipo</label>
+        <label className={controls.label}>{t('term.type')}</label>
         <div className={picker.list}>
           {visibleAgents.map((a) => {
             const active = type === a.type
@@ -128,10 +130,10 @@ export function NewTerminalModal() {
                       }}
                       title={
                         unrestricted[a.type]
-                          ? `Modo irrestrito ATIVO (${UNRESTRICTED_FLAG[a.type]})`
-                          : 'Ativar modo irrestrito (skip permissions)'
+                          ? t('term.unrestrictedActive', { flag: UNRESTRICTED_FLAG[a.type] ?? '' })
+                          : t('term.unrestrictedEnableSkip')
                       }
-                      aria-label="Modo irrestrito"
+                      aria-label={t('term.unrestricted')}
                     >
                       <Zap
                         size={14}
@@ -147,8 +149,8 @@ export function NewTerminalModal() {
                       setType(a.type)
                       void browse()
                     }}
-                    title={active && (cwd || inheritedCwd) ? cwd || inheritedCwd : 'Escolher pasta'}
-                    aria-label="Escolher pasta"
+                    title={active && (cwd || inheritedCwd) ? cwd || inheritedCwd : t('term.chooseFolder')}
+                    aria-label={t('term.chooseFolder')}
                   >
                     {active && (cwd || inheritedCwd) ? <FolderCheck size={14} /> : <Folder size={14} />}
                   </button>
@@ -160,7 +162,7 @@ export function NewTerminalModal() {
       </div>
 
       <div className={controls.field}>
-        <label className={controls.label}>Nome (opcional)</label>
+        <label className={controls.label}>{t('term.nameOptional')}</label>
         <input
           className={controls.input}
           value={name}
@@ -170,20 +172,20 @@ export function NewTerminalModal() {
       </div>
 
       <div className={controls.field}>
-        <label className={controls.label}>Pasta (cwd)</label>
+        <label className={controls.label}>{t('term.folderCwd')}</label>
         <div className={controls.cwdRow}>
           <input
             className={controls.input}
             value={cwd}
             onChange={(e) => setCwd(e.target.value)}
-            placeholder={inheritedCwd || '(default da shell)'}
+            placeholder={inheritedCwd || t('term.shellDefaultPlaceholder')}
           />
           <button
             type="button"
             className={controls.btn}
             onClick={browse}
-            aria-label="Escolher pasta"
-            title="Escolher pasta"
+            aria-label={t('term.chooseFolder')}
+            title={t('term.chooseFolder')}
           >
             <Folder size={14} />
           </button>

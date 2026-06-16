@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useProjectsStore } from '../../stores/projectsStore'
 import { useUiStore } from '../../stores/uiStore'
 import type { AgentType } from '../../lib/types'
+import { useT } from '../../lib/i18n'
 import { Modal } from './Modal'
 import controls from './controls.module.css'
 
@@ -24,6 +25,7 @@ type Hit = {
 }
 
 export function FindJumpModal() {
+  const t = useT()
   const open = useUiStore((s) => s.openModal === 'findJump')
   const closeModal = useUiStore((s) => s.closeModal)
   const projects = useProjectsStore((s) => s.projects)
@@ -45,15 +47,15 @@ export function FindJumpModal() {
 
   const hits = useMemo<Hit[]>(() => {
     const all: Hit[] = projects.flatMap((p) =>
-      p.terminals.map((t) => {
-        const active = t.tabs.find((s) => s.id === t.activeTabId) ?? t.tabs[0]
+      p.terminals.map((term) => {
+        const active = term.tabs.find((s) => s.id === term.activeTabId) ?? term.tabs[0]
         return {
           projectId: p.id,
           projectName: p.name,
-          terminalId: t.id,
-          terminalName: t.name,
+          terminalId: term.id,
+          terminalName: term.name,
           type: active?.type ?? 'shell',
-          cwd: active?.cwd ?? t.cwd,
+          cwd: active?.cwd ?? term.cwd,
         }
       }),
     )
@@ -87,7 +89,7 @@ export function FindJumpModal() {
   }
 
   return (
-    <Modal open={open} onClose={closeModal} title="Buscar terminal" width={520}>
+    <Modal open={open} onClose={closeModal} title={t('term.findTerminalTitle')} width={520}>
       <input
         ref={inputRef}
         className={controls.input}
@@ -97,14 +99,14 @@ export function FindJumpModal() {
           setCursor(0)
         }}
         onKeyDown={onKey}
-        placeholder="Filtrar por nome / cwd / projeto…"
+        placeholder={t('term.findPlaceholder')}
         autoFocus
       />
 
       <div style={{ marginTop: 12, maxHeight: 320, overflowY: 'auto' }}>
         {hits.length === 0 ? (
           <div style={{ padding: 24, textAlign: 'center', color: 'var(--fg-faint)' }}>
-            Nada encontrado.
+            {t('term.nothingFound')}
           </div>
         ) : (
           hits.map((hit, i) => {

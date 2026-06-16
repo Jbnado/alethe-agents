@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 
+import { useT } from '../../lib/i18n'
 import { pickFile, saveFile } from '../../lib/dialog'
 import {
   exportBackup,
@@ -25,6 +26,7 @@ import { useUiStore } from '../../stores/uiStore'
 import styles from './MainMenu.module.css'
 
 export function MainMenu() {
+  const t = useT()
   const open = useUiStore((s) => s.showMainMenu)
   const toggle = useUiStore((s) => s.toggleMainMenu)
   const openModal = useUiStore((s) => s.openModal_)
@@ -56,18 +58,13 @@ export function MainMenu() {
       await fn()
     } catch (err) {
       console.error(err)
-      window.alert(`Erro: ${String(err)}`)
+      window.alert(t('common.errorPrefix', { message: String(err) }))
     }
     toggle()
   }
 
   const reset = async () => {
-    if (
-      !window.confirm(
-        'Apagar TODO o estado do app (projetos, scrollback, configs)? Não dá pra desfazer.',
-      )
-    )
-      return
+    if (!window.confirm(t('menu.confirmReset'))) return
     await resetAppData()
     window.location.reload()
   }
@@ -82,7 +79,7 @@ export function MainMenu() {
           toggle()
         }}
       >
-        <Settings size={14} /> <span>Preferências</span>
+        <Settings size={14} /> <span>{t('menu.preferences')}</span>
       </button>
       <button
         type="button"
@@ -92,7 +89,7 @@ export function MainMenu() {
           toggle()
         }}
       >
-        <Sparkles size={14} /> <span>Boas-vindas</span>
+        <Sparkles size={14} /> <span>{t('menu.welcome')}</span>
       </button>
       <button
         type="button"
@@ -103,11 +100,11 @@ export function MainMenu() {
         }}
       >
         <Sun size={14} />
-        <span>Escolher tema</span>
+        <span>{t('menu.pickTheme')}</span>
       </button>
       <button type="button" className={styles.item} onClick={() => setFlat(!flat)}>
         <Layers size={14} />
-        <span>{flat ? 'Agrupar por projeto' : 'Modo flat (sem containers)'}</span>
+        <span>{flat ? t('menu.groupByProject') : t('menu.flatMode')}</span>
       </button>
       <div className={styles.separator} />
       <button
@@ -115,14 +112,14 @@ export function MainMenu() {
         className={styles.item}
         onClick={() => void action(openDataFolder)}
       >
-        <FolderOpen size={14} /> <span>Abrir pasta de dados</span>
+        <FolderOpen size={14} /> <span>{t('menu.openDataFolder')}</span>
       </button>
       <button
         type="button"
         className={styles.item}
         onClick={() => void action(openSpawnLog)}
       >
-        <FileText size={14} /> <span>Abrir spawn.log</span>
+        <FileText size={14} /> <span>{t('menu.openSpawnLog')}</span>
       </button>
       <div className={styles.separator} />
       <button
@@ -131,15 +128,15 @@ export function MainMenu() {
         onClick={() =>
           void action(async () => {
             const target = await saveFile({
-              title: 'Exportar backup',
+              title: t('menu.exportBackupTitle'),
               defaultPath: `alethe-backup-${new Date().toISOString().slice(0, 10)}.alethe.zip`,
-              filters: [{ name: 'Alethe backup', extensions: ['zip'] }],
+              filters: [{ name: t('menu.backupFilter'), extensions: ['zip'] }],
             })
             if (target) await exportBackup(target)
           })
         }
       >
-        <Download size={14} /> <span>Exportar backup…</span>
+        <Download size={14} /> <span>{t('menu.exportBackup')}</span>
       </button>
       <button
         type="button"
@@ -147,22 +144,17 @@ export function MainMenu() {
         onClick={() =>
           void action(async () => {
             const source = await pickFile({
-              title: 'Importar backup',
-              filters: [{ name: 'Alethe backup', extensions: ['zip'] }],
+              title: t('menu.importBackupTitle'),
+              filters: [{ name: t('menu.backupFilter'), extensions: ['zip'] }],
             })
             if (!source) return
-            if (
-              !window.confirm(
-                'Importar vai substituir o estado atual (projetos, scrollback). Continuar?',
-              )
-            )
-              return
+            if (!window.confirm(t('menu.confirmImport'))) return
             await importBackup(source)
             window.location.reload()
           })
         }
       >
-        <Upload size={14} /> <span>Importar backup…</span>
+        <Upload size={14} /> <span>{t('menu.importBackup')}</span>
       </button>
       <div className={styles.separator} />
       <button
@@ -173,14 +165,14 @@ export function MainMenu() {
           toggle()
         }}
       >
-        <RefreshCw size={14} /> <span>Refazer onboarding</span>
+        <RefreshCw size={14} /> <span>{t('menu.redoOnboarding')}</span>
       </button>
       <button
         type="button"
         className={`${styles.item} ${styles.danger}`}
         onClick={() => void reset()}
       >
-        <Trash2 size={14} /> <span>Resetar app data…</span>
+        <Trash2 size={14} /> <span>{t('menu.resetAppData')}</span>
       </button>
     </div>
   )

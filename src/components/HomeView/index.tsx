@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { pickDirectory } from '../../lib/dialog'
 import { formatHomeDate, formatRelativeTimestamp, getGreeting } from '../../lib/greeting'
+import { useT, type TFunction } from '../../lib/i18n'
 import { getFirstName, getProfileImageUrl, getProfileInitial } from '../../lib/profile'
 import { useProjectsStore } from '../../stores/projectsStore'
 import { useUiStore } from '../../stores/uiStore'
@@ -15,6 +16,8 @@ const RECENT_PROJECTS_LIMIT = 6
 const NOTIFICATIONS_LIMIT = 5
 
 export function HomeView() {
+  const t = useT()
+  const language = useProjectsStore((s) => s.preferences.language)
   const preferences = useProjectsStore((s) => s.preferences)
   const projects = useProjectsStore((s) => s.projects)
   const recentProjectIds = useProjectsStore((s) => s.workspace.recentProjectIds)
@@ -67,8 +70,8 @@ export function HomeView() {
     return () => clearInterval(interval)
   }, [])
 
-  const greeting = useMemo(() => getGreeting(now), [now])
-  const dateStr = useMemo(() => formatHomeDate(now), [now])
+  const greeting = useMemo(() => getGreeting(now, language), [now, language])
+  const dateStr = useMemo(() => formatHomeDate(now, language), [now, language])
   const displayName = preferences.displayName
   const firstName = getFirstName(displayName)
   const firstNameLower = firstName.toLowerCase()
@@ -126,20 +129,20 @@ export function HomeView() {
           <Bot size={20} />
         </span>
         <span className={styles.agentHeroBody}>
-          <span className={styles.agentHeroTitle}>iniciar sessão de agents</span>
+          <span className={styles.agentHeroTitle}>{t('home.agentHeroTitle')}</span>
           <span className={styles.agentHeroSub}>
-            orquestre subagents num canvas dedicado
+            {t('home.agentHeroSub')}
           </span>
         </span>
         <span className={styles.agentHeroCta}>
-          começar
+          {t('home.agentHeroCta')}
           <ArrowRight size={15} />
         </span>
       </button>
 
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
-          projetos recentes
+          {t('home.recentProjects')}
           {recentProjects.length > 0 ? (
             <span className={styles.sectionCount}>{recentProjects.length}</span>
           ) : null}
@@ -153,25 +156,26 @@ export function HomeView() {
                 lastUsedAt={lastUsedByProject.get(project.id) ?? 0}
                 now={now.getTime()}
                 onOpen={() => openProject(project)}
+                t={t}
               />
             ))}
           </div>
         ) : (
           <div className={styles.emptyState}>
-            nenhum projeto ainda — crie um pra começar
+            {t('home.noProjects')}
           </div>
         )}
       </section>
 
       <section className={styles.section}>
-        <div className={styles.sectionHeader}>uso & atividade</div>
+        <div className={styles.sectionHeader}>{t('home.usageActivity')}</div>
         <UsageStrip />
       </section>
 
       <div className={styles.bottomGrid}>
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
-            notificações
+            {t('home.notifications')}
             {notifications.length > 0 ? (
               <>
                 <span className={styles.sectionCount}>{notifications.length}</span>
@@ -180,7 +184,7 @@ export function HomeView() {
                   className={styles.sectionAction}
                   onClick={() => clearNotifications()}
                 >
-                  limpar
+                  {t('home.clear')}
                 </button>
               </>
             ) : null}
@@ -197,34 +201,34 @@ export function HomeView() {
                     <span className={styles.notifText}>{n.body}</span>
                   </span>
                   <span className={styles.notifTime}>
-                    {formatRelativeTimestamp(n.createdAt, now.getTime())}
+                    {formatRelativeTimestamp(n.createdAt, now.getTime(), language)}
                   </span>
                 </li>
               ))}
             </ul>
           ) : (
-            <div className={styles.emptyState}>tudo em dia — sem notificações</div>
+            <div className={styles.emptyState}>{t('home.noNotifications')}</div>
           )}
         </section>
 
         <section className={styles.section}>
-          <div className={styles.sectionHeader}>comece algo</div>
+          <div className={styles.sectionHeader}>{t('home.startSomething')}</div>
           <div className={styles.actionList}>
             <ActionCard
               icon={<TerminalSquare size={14} />}
-              label="novo terminal"
+              label={t('home.newTerminal')}
               shortcut="⌘T"
               onClick={handleNewTerminal}
             />
             <ActionCard
               icon={<FolderPlus size={14} />}
-              label="novo projeto"
+              label={t('home.newProject')}
               shortcut="⌘⇧P"
               onClick={() => openModal('newProject')}
             />
             <ActionCard
               icon={<Layers size={14} />}
-              label="novo grupo"
+              label={t('home.newGroup')}
               shortcut="⌘⇧G"
               onClick={() => openModal('newGroup')}
             />
@@ -233,9 +237,9 @@ export function HomeView() {
       </div>
 
       <footer className={styles.footer}>
-        <FooterShortcut keys="⌘P" label="buscar" onClick={() => openModal('findJump')} />
-        <FooterShortcut keys="⌘K" label="comando" />
-        <FooterShortcut keys="?" label="ajuda" />
+        <FooterShortcut keys="⌘P" label={t('home.searchShortcut')} onClick={() => openModal('findJump')} />
+        <FooterShortcut keys="⌘K" label={t('home.commandShortcut')} />
+        <FooterShortcut keys="?" label={t('home.helpShortcut')} />
       </footer>
     </section>
   )
@@ -246,11 +250,13 @@ function RecentProjectCard({
   lastUsedAt,
   now,
   onOpen,
+  t,
 }: {
   project: Project
   lastUsedAt: number
   now: number
   onOpen: () => void
+  t: TFunction
 }) {
   const terminalCount = project.terminals.length
   return (
@@ -261,7 +267,9 @@ function RecentProjectCard({
           {project.name}
         </span>
         <span className={styles.projectMeta}>
-          {terminalCount} terminal{terminalCount === 1 ? '' : 's'}
+          {terminalCount === 1
+            ? t('home.terminalsOne', { n: terminalCount })
+            : t('home.terminalsMany', { n: terminalCount })}
           {lastUsedAt ? ` · ${formatRelativeTimestamp(lastUsedAt, now)}` : ''}
         </span>
       </span>

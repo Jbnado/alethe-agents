@@ -9,6 +9,7 @@ mod diagnostics;
 mod economy_agents;
 mod paths;
 mod projects;
+mod profiles;
 mod pty;
 mod spotify;
 mod stats;
@@ -54,6 +55,12 @@ pub fn run() {
             pty::get_pty_cwd,
             projects::load_projects,
             projects::save_projects,
+            profiles::list_profiles,
+            profiles::get_active_profile,
+            profiles::set_active_profile,
+            profiles::create_profile,
+            profiles::rename_profile,
+            profiles::delete_profile,
             cli_resolver::find_cli_launcher,
             backup::export_backup,
             backup::import_backup,

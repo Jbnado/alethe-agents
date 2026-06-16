@@ -1,6 +1,7 @@
 import { Upload, X } from 'lucide-react'
 import { useRef } from 'react'
 
+import { useT } from '../../lib/i18n'
 import controls from './controls.module.css'
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024
@@ -18,10 +19,11 @@ export function ImageInput({
   label,
   value,
   onChange,
-  placeholder = 'https://exemplo.com/icone.png',
+  placeholder,
   hint,
   onEnter,
 }: ImageInputProps) {
+  const t = useT()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const pickImage = () => fileInputRef.current?.click()
@@ -29,11 +31,11 @@ export function ImageInput({
   const onFileChange = async (file: File | undefined) => {
     if (!file) return
     if (!file.type.startsWith('image/')) {
-      window.alert('Escolha um arquivo de imagem.')
+      window.alert(t('image.mustBeImage'))
       return
     }
     if (file.size > MAX_IMAGE_BYTES) {
-      window.alert('Imagem muito grande. Use uma imagem de até 2 MB.')
+      window.alert(t('image.tooLarge'))
       return
     }
 
@@ -54,15 +56,15 @@ export function ImageInput({
           className={controls.input}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t('image.placeholder')}
           onKeyDown={(e) => e.key === 'Enter' && onEnter?.()}
         />
         <button
           type="button"
           className={controls.iconBtn}
           onClick={pickImage}
-          title="Escolher imagem local"
-          aria-label="Escolher imagem local"
+          title={t('image.pickLocal')}
+          aria-label={t('image.pickLocal')}
         >
           <Upload size={14} />
         </button>
@@ -71,8 +73,8 @@ export function ImageInput({
             type="button"
             className={controls.iconBtn}
             onClick={() => onChange('')}
-            title="Remover imagem"
-            aria-label="Remover imagem"
+            title={t('image.remove')}
+            aria-label={t('image.remove')}
           >
             <X size={14} />
           </button>

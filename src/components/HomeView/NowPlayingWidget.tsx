@@ -1,6 +1,7 @@
 import { Music } from 'lucide-react'
 
 import { useNowPlaying } from '../../hooks/useNowPlaying'
+import { useT } from '../../lib/i18n'
 import styles from './HomeView.module.css'
 
 type Props = {
@@ -9,6 +10,7 @@ type Props = {
 }
 
 export function NowPlayingWidget({ enabled }: Props) {
+  const t = useT()
   const { connected, current, loading, connect } = useNowPlaying(enabled)
 
   if (connected === null) return null // ainda checando
@@ -21,7 +23,7 @@ export function NowPlayingWidget({ enabled }: Props) {
         onClick={() => void connect()}
         disabled={loading}
       >
-        {loading ? 'autorizando…' : '▶ conectar Spotify'}
+        {loading ? t('widget.authorizing') : `▶ ${t('widget.connectSpotify')}`}
       </button>
     )
   }
@@ -33,7 +35,7 @@ export function NowPlayingWidget({ enabled }: Props) {
     <button
       type="button"
       className={styles.nowPlaying}
-      aria-label={current.playing ? 'Tocando agora' : 'Última faixa'}
+      aria-label={current.playing ? t('widget.nowPlaying') : t('widget.lastTrack')}
     >
       <div className={styles.nowPlayingCover}>
         {current.cover_url ? (
@@ -56,7 +58,7 @@ export function NowPlayingWidget({ enabled }: Props) {
           {current.playing ? (
             <Equalizer />
           ) : (
-            <span className={styles.nowPlayingIdle}>última</span>
+            <span className={styles.nowPlayingIdle}>{t('widget.last')}</span>
           )}
         </div>
       </div>

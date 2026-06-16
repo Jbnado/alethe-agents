@@ -20,6 +20,7 @@ import { NewProjectModal } from './components/modals/NewProjectModal'
 import { NewSubTabModal } from './components/modals/NewSubTabModal'
 import { NewTerminalModal } from './components/modals/NewTerminalModal'
 import { OnboardingModal } from './components/modals/OnboardingModal'
+import { ProfilesModal } from './components/modals/ProfilesModal'
 import { PreferencesModal } from './components/modals/PreferencesModal'
 import { SuspendGroupModal } from './components/modals/SuspendGroupModal'
 import { ThemePickerModal } from './components/modals/ThemePickerModal'
@@ -99,6 +100,7 @@ export default function App() {
   const hydrated = useProjectsStore((s) => s.hydrated)
   const uiTheme = useProjectsStore((s) => s.preferences.uiTheme)
   const uiZoom = useProjectsStore((s) => s.preferences.uiZoom)
+  const language = useProjectsStore((s) => s.preferences.language)
   const activeView = useUiStore((s) => s.activeView)
   const sidebarVisible = useUiStore((s) => s.sidebarVisible)
 
@@ -111,6 +113,10 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = uiTheme
   }, [uiTheme])
+
+  useEffect(() => {
+    document.documentElement.lang = language === 'pt-BR' ? 'pt-BR' : 'en'
+  }, [language])
 
   useEffect(() => {
     if (!hydrated) return
@@ -165,6 +171,7 @@ export default function App() {
       <NewTerminalModal />
       <NewSubTabModal />
       <PreferencesModal />
+      <ProfilesModal />
       <FindJumpModal />
       <OnboardingModal />
       <WelcomeModal />

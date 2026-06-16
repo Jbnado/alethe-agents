@@ -11,6 +11,7 @@ import { pickFile } from '../../lib/dialog'
 import { AgentCompletionMonitor } from '../../lib/agentCompletionMonitor'
 import { consumeSession, removeSession, saveSession } from '../../lib/sessionResume'
 import { acquireSpawnSlot, releaseSpawnSlot } from '../../lib/spawnQueue'
+import { readScopedStorage, writeScopedStorage } from '../../lib/storageNamespace'
 import {
   attachPty,
   findCliLauncher,
@@ -27,6 +28,7 @@ import {
   writeClipboardText,
   writePty,
 } from '../../lib/tauri'
+import { getLocale, translate, useT } from '../../lib/i18n'
 import type { AgentType, Theme } from '../../lib/types'
 import { useProjectsStore } from '../../stores/projectsStore'
 import { useTerminalsStore } from '../../stores/terminalsStore'
@@ -267,19 +269,14 @@ export type XTermViewProps = {
   onAgentComplete?: () => void
 }
 
-const PROMPT_HISTORY_KEY = (id: string) => `alethe:prompt-history:${id}`
-const LEGACY_PROMPT_HISTORY_KEY = (id: string) => `ensemble:prompt-history:${id}`
+const PROMPT_HISTORY_KEY = (id: string) => `prompt-history:${id}`
 const PASTE_CHUNK_SIZE = 1024
 const PASTE_CHUNK_DELAY_MS = 8
 
 function loadPromptHistory(ptyId: string): string[] {
-  const key = PROMPT_HISTORY_KEY(ptyId)
-  const raw = localStorage.getItem(key) ?? localStorage.getItem(LEGACY_PROMPT_HISTORY_KEY(ptyId))
+  const raw = readScopedStorage(PROMPT_HISTORY_KEY(ptyId), true)
   if (!raw) return []
   const history = JSON.parse(raw) as string[]
-  if (!localStorage.getItem(key)) {
-    localStorage.setItem(key, JSON.stringify(history))
-  }
   return history
 }
 
@@ -320,6 +317,7 @@ export function XTermView({
   onExit,
   onAgentComplete,
 }: XTermViewProps) {
+  const t = useT()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const ptyIdRef = useRef<string | null>(null)
@@ -386,7 +384,7 @@ export function XTermView({
       await openInBrowser(target)
     } catch (err) {
       useUiStore.getState().pushToast({
-        title: 'Não consegui abrir no browser',
+        title: translate(getLocale(), 'xterm.toastOpenBrowserFail'),
         body: String(err),
       })
     }
@@ -397,7 +395,7 @@ export function XTermView({
       await openInFileExplorer(target)
     } catch (err) {
       useUiStore.getState().pushToast({
-        title: 'Não consegui abrir na pasta',
+        title: translate(getLocale(), 'xterm.toastOpenFolderFail'),
         body: String(err),
       })
     }
@@ -407,12 +405,12 @@ export function XTermView({
     try {
       await writeClipboardText(target)
       useUiStore.getState().pushToast({
-        title: 'Copiado',
+        title: translate(getLocale(), 'xterm.toastCopied'),
         body: target,
       })
     } catch (err) {
       useUiStore.getState().pushToast({
-        title: 'Não consegui copiar',
+        title: translate(getLocale(), 'xterm.toastCopyFail'),
         body: String(err),
       })
     }
@@ -440,7 +438,7 @@ export function XTermView({
         history.push(line)
         if (history.length > 50) history.shift()
         try {
-          localStorage.setItem(PROMPT_HISTORY_KEY(ptyId), JSON.stringify(history))
+          writeScopedStorage(PROMPT_HISTORY_KEY(ptyId), JSON.stringify(history))
         } catch {
           /* localStorage cheio — ignora */
         }
@@ -1009,8 +1007,8 @@ export function XTermView({
                 hideLinkActions()
               }}
               disabled={linkActions.kind === 'url'}
-              title="Abrir na pasta"
-              aria-label="Abrir na pasta"
+              title={t('xterm.openInFolder')}
+              aria-label={t('xterm.openInFolder')}
             >
               <FolderOpen size={14} />
             </button>
@@ -1021,8 +1019,8 @@ export function XTermView({
                 void copyLinkText(linkActions.text)
                 hideLinkActions()
               }}
-              title="Copiar"
-              aria-label="Copiar"
+              title={t('xterm.copy')}
+              aria-label={t('xterm.copy')}
             >
               <Copy size={14} />
             </button>
@@ -1033,8 +1031,8 @@ export function XTermView({
                 void openLinkInBrowser(linkActions.text)
                 hideLinkActions()
               }}
-              title={linkActions.kind === 'url' ? 'Abrir no browser' : 'Abrir no app padrão'}
-              aria-label={linkActions.kind === 'url' ? 'Abrir no browser' : 'Abrir no app padrão'}
+              title={t(linkActions.kind === 'url' ? 'xterm.openInBrowser' : 'xterm.openInDefaultApp')}
+              aria-label={t(linkActions.kind === 'url' ? 'xterm.openInBrowser' : 'xterm.openInDefaultApp')}
             >
               <ExternalLink size={14} />
             </button>
@@ -1042,8 +1040,8 @@ export function XTermView({
               type="button"
               className={styles.linkActionBtn}
               onClick={hideLinkActions}
-              title="Fechar"
-              aria-label="Fechar"
+              title={t('common.close')}
+              aria-label={t('common.close')}
             >
               <X size={14} />
             </button>

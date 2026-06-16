@@ -13,6 +13,7 @@ import {
   useProjectsStore,
 } from '../../stores/projectsStore'
 import { useUiStore } from '../../stores/uiStore'
+import { useT } from '../../lib/i18n'
 import { cellStyle, gridContainerStyle, reconcileGridLayout } from '../../lib/gridLayout'
 import type {
   GridLayout,
@@ -519,13 +520,14 @@ function NoWorkspace({
   project: Project | null
   onAddTerminal: () => void
 }) {
+  const t = useT()
   const openContainerWithAllPanes = useProjectsStore((s) => s.openContainerWithAllPanes)
   if (!project) {
     return (
       <div className={styles.empty}>
-        <p>Crie um projeto pra começar.</p>
+        <p>{t('ws.createProjectToStart')}</p>
         <button type="button" className={styles.cta} onClick={onAddTerminal}>
-          Criar projeto
+          {t('ws.createProject')}
         </button>
       </div>
     )
@@ -533,23 +535,23 @@ function NoWorkspace({
   if (project.terminals.length === 0) {
     return (
       <div className={styles.empty}>
-        <p>Sem terminais nesse projeto.</p>
+        <p>{t('ws.noTerminalsInProject')}</p>
         <button type="button" className={styles.cta} onClick={onAddTerminal}>
-          Criar primeiro terminal
+          {t('ws.createFirstTerminal')}
         </button>
       </div>
     )
   }
   return (
     <div className={styles.empty}>
-      <p>Nenhum container aberto na workspace.</p>
-      <p className={styles.dim}>{project.terminals.length} terminal(is) disponíveis.</p>
+      <p>{t('ws.noContainerOpen')}</p>
+      <p className={styles.dim}>{t('ws.terminalsAvailable', { count: project.terminals.length })}</p>
       <button
         type="button"
         className={styles.cta}
         onClick={() => openContainerWithAllPanes(project.id)}
       >
-        Abrir todos
+        {t('ws.openAll')}
       </button>
     </div>
   )

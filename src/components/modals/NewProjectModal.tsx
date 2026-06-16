@@ -3,11 +3,13 @@ import { useState } from 'react'
 import { useUiStore } from '../../stores/uiStore'
 import { useProjectsStore } from '../../stores/projectsStore'
 import { GROUP_COLORS } from '../../lib/types'
+import { useT } from '../../lib/i18n'
 import { ImageInput } from './ImageInput'
 import { Modal } from './Modal'
 import controls from './controls.module.css'
 
 export function NewProjectModal() {
+  const t = useT()
   const open = useUiStore((s) => s.openModal === 'newProject')
   const context = useUiStore((s) => s.modalContext) as { groupId?: string | null } | null
   const closeModal = useUiStore((s) => s.closeModal)
@@ -43,11 +45,11 @@ export function NewProjectModal() {
         reset()
         closeModal()
       }}
-      title="Novo projeto"
+      title={t('crud.newProjectTitle')}
       footer={
         <>
           <button type="button" className={controls.btn} onClick={closeModal}>
-            Cancelar
+            {t('crud.cancel')}
           </button>
           <button
             type="button"
@@ -55,31 +57,31 @@ export function NewProjectModal() {
             disabled={!name.trim()}
             onClick={submit}
           >
-            Criar
+            {t('crud.create')}
           </button>
         </>
       }
     >
       <div className={controls.field}>
-        <label className={controls.label}>Nome</label>
+        <label className={controls.label}>{t('crud.nameLabel')}</label>
         <input
           className={controls.input}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder="Ex: Site novo, Cliente X..."
+          placeholder={t('crud.projectNamePlaceholder')}
         />
       </div>
 
       {groups.length > 0 ? (
         <div className={controls.field}>
-          <label className={controls.label}>Grupo</label>
+          <label className={controls.label}>{t('crud.groupLabel')}</label>
           <select
             className={controls.input}
             value={groupId ?? ''}
             onChange={(e) => setGroupId(e.target.value || null)}
           >
-            <option value="">Solto (sem grupo)</option>
+            <option value="">{t('crud.noGroup')}</option>
             {groups.map((g) => (
               <option key={g.id} value={g.id}>
                 {g.name}
@@ -90,14 +92,14 @@ export function NewProjectModal() {
       ) : null}
 
       <div className={controls.field}>
-        <label className={controls.label}>Cor</label>
+        <label className={controls.label}>{t('crud.colorLabel')}</label>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {GROUP_COLORS.map((c) => (
             <button
               key={c}
               type="button"
               onClick={() => setColor(c)}
-              aria-label={`Cor ${c}`}
+              aria-label={t('crud.colorSwatch', { color: c })}
               style={{
                 width: 24,
                 height: 24,
@@ -112,11 +114,11 @@ export function NewProjectModal() {
       </div>
 
       <ImageInput
-        label="Icone"
+        label={t('crud.iconLabel')}
         value={iconUrl}
         onChange={setIconUrl}
         onEnter={submit}
-        hint="Opcional. Use uma URL ou faça upload de uma imagem local. Se vazio, usa o quadradinho de cor."
+        hint={t('crud.projectIconHint')}
       />
     </Modal>
   )

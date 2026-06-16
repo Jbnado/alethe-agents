@@ -1,7 +1,7 @@
-// Listener local do canvas de subagents.
+// Listener da POC do canvas de subagents (Fase 1).
 //
 // O Claude Code dispara hooks `SubagentStart`/`SubagentStop` como POST HTTP
-// (hook type "http" no settings da sessão). Este módulo sobe um
+// (hook type "http" no settings do projeto de teste). Este módulo sobe um
 // servidor mínimo em 127.0.0.1:9123, lê o JSON de cada POST e re-emite pro
 // frontend como evento Tauri `agent-hook`. Fluxo novo e isolado — não toca
 // em PTY, projects nem em nenhum fluxo existente.

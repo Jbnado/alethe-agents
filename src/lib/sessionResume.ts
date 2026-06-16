@@ -3,8 +3,9 @@
  * retomar agentes automaticamente ao reabrir o app.
  */
 
-const STORAGE_KEY = 'alethe:active-sessions'
-const LEGACY_STORAGE_KEY = 'ensemble:active-sessions'
+import { readScopedStorage, writeScopedStorage } from './storageNamespace'
+
+const STORAGE_KEY = 'active-sessions'
 
 export type SavedSession = {
   sessionId: string
@@ -21,12 +22,9 @@ export type ActiveSessions = Record<string, SavedSession>
 
 export function getActiveSessions(): ActiveSessions {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY)
+    const raw = readScopedStorage(STORAGE_KEY, true)
     if (!raw) return {}
     const sessions = JSON.parse(raw) as ActiveSessions
-    if (!localStorage.getItem(STORAGE_KEY)) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions))
-    }
     return sessions
   } catch {
     return {}
@@ -36,13 +34,13 @@ export function getActiveSessions(): ActiveSessions {
 export function saveSession(ptyId: string, session: SavedSession): void {
   const current = getActiveSessions()
   current[ptyId] = session
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(current))
+  writeScopedStorage(STORAGE_KEY, JSON.stringify(current))
 }
 
 export function removeSession(ptyId: string): void {
   const current = getActiveSessions()
   delete current[ptyId]
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(current))
+  writeScopedStorage(STORAGE_KEY, JSON.stringify(current))
 }
 
 export function consumeSession(ptyId: string): SavedSession | null {
@@ -50,7 +48,7 @@ export function consumeSession(ptyId: string): SavedSession | null {
   const session = current[ptyId] ?? null
   if (session) {
     delete current[ptyId]
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(current))
+    writeScopedStorage(STORAGE_KEY, JSON.stringify(current))
   }
   return session
 }

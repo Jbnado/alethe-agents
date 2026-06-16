@@ -7,6 +7,7 @@ import {
   spotifyStatus,
   type NowPlaying,
 } from '../lib/spotify'
+import { readScopedStorage, writeScopedStorage } from '../lib/storageNamespace'
 import { useProjectsStore } from '../stores/projectsStore'
 
 const POLL_MS = 8000
@@ -15,7 +16,7 @@ const LAST_TRACK_KEY = 'home.nowPlaying.last'
 /** Lê a última faixa conhecida do storage (marcada como pausada). */
 function loadLastTrack(): NowPlaying | null {
   try {
-    const raw = localStorage.getItem(LAST_TRACK_KEY)
+    const raw = readScopedStorage(LAST_TRACK_KEY, true)
     if (!raw) return null
     const parsed = JSON.parse(raw) as NowPlaying
     if (!parsed || typeof parsed.track !== 'string' || !parsed.track) return null
@@ -28,7 +29,7 @@ function loadLastTrack(): NowPlaying | null {
 /** Persiste a faixa atual pra não perder o estado entre sessões. */
 function saveLastTrack(np: NowPlaying): void {
   try {
-    localStorage.setItem(LAST_TRACK_KEY, JSON.stringify(np))
+    writeScopedStorage(LAST_TRACK_KEY, JSON.stringify(np))
   } catch {
     /* storage cheio/indisponível — ignora */
   }

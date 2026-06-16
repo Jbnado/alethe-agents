@@ -1,12 +1,14 @@
 import { Check } from 'lucide-react'
 
-import { THEME_OPTIONS } from '../../lib/themes'
+import { useT } from '../../lib/i18n'
+import { THEME_OPTIONS, themeDescription, themeLabel } from '../../lib/themes'
 import { useProjectsStore } from '../../stores/projectsStore'
 import { useUiStore } from '../../stores/uiStore'
 import { Modal } from './Modal'
 import controls from './controls.module.css'
 
 export function ThemePickerModal() {
+  const t = useT()
   const open = useUiStore((s) => s.openModal === 'themePicker')
   const closeModal = useUiStore((s) => s.closeModal)
   const uiTheme = useProjectsStore((s) => s.preferences.uiTheme)
@@ -15,7 +17,7 @@ export function ThemePickerModal() {
   const setTerminalTheme = useProjectsStore((s) => s.setTerminalTheme)
 
   return (
-    <Modal open={open} onClose={closeModal} title="Escolher tema" width={620}>
+    <Modal open={open} onClose={closeModal} title={t('themePicker.title')} width={620}>
       <div className={controls.themeGrid}>
         {THEME_OPTIONS.map((theme) => {
           const active = uiTheme === theme.id
@@ -32,24 +34,24 @@ export function ThemePickerModal() {
                 ))}
               </span>
               <span className={controls.themeTitleRow}>
-                <strong>{theme.label}</strong>
+                <strong>{themeLabel(t, theme.id)}</strong>
                 {active ? <Check size={15} /> : null}
               </span>
-              <span className={controls.themeDescription}>{theme.description}</span>
+              <span className={controls.themeDescription}>{themeDescription(t, theme.id)}</span>
             </button>
           )
         })}
       </div>
 
       <div className={controls.field} style={{ marginTop: 16 }}>
-        <label className={controls.label}>Tema do terminal</label>
+        <label className={controls.label}>{t('prefs.terminalTheme')}</label>
         <div className={controls.pillRow}>
           <button
             type="button"
             className={`${controls.pill} ${terminalTheme === null ? controls.pillActive : ''}`}
             onClick={() => setTerminalTheme(null)}
           >
-            Seguir UI
+            {t('common.followUi')}
           </button>
           {THEME_OPTIONS.map((theme) => (
             <button
@@ -58,7 +60,7 @@ export function ThemePickerModal() {
               className={`${controls.pill} ${terminalTheme === theme.id ? controls.pillActive : ''}`}
               onClick={() => setTerminalTheme(theme.id)}
             >
-              {theme.label}
+              {themeLabel(t, theme.id)}
             </button>
           ))}
         </div>

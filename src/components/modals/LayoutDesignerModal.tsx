@@ -3,6 +3,7 @@ import { Minus, Plus, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { autoGridLayout, reconcileGridLayout } from '../../lib/gridLayout'
+import { useT } from '../../lib/i18n'
 import type { GridCell, GridLayout } from '../../lib/types'
 import { useProjectsStore } from '../../stores/projectsStore'
 import { useUiStore } from '../../stores/uiStore'
@@ -33,6 +34,7 @@ export function LayoutDesignerModal() {
 }
 
 function DesignerInner({ context, onClose }: { context: Context; onClose: () => void }) {
+  const t = useT()
   const project = useProjectsStore((s) =>
     context.kind === 'project' ? s.projects.find((p) => p.id === context.id) : null,
   )
@@ -51,12 +53,12 @@ function DesignerInner({ context, onClose }: { context: Context; onClose: () => 
   >(() => {
     if (context.kind === 'project' && project) {
       return [
-        `Layout de "${project.name}"`,
-        project.terminals.map((t) => ({
-          id: t.id,
-          label: t.name,
+        t('mod.layoutTitleProject', { name: project.name }),
+        project.terminals.map((term) => ({
+          id: term.id,
+          label: term.name,
           color: project.color,
-          hint: t.tabs[0]?.type ?? 'shell',
+          hint: term.tabs[0]?.type ?? 'shell',
         })),
         project.gridLayout,
       ]
@@ -66,12 +68,12 @@ function DesignerInner({ context, onClose }: { context: Context; onClose: () => 
         .map((id) => projects.find((p) => p.id === id))
         .filter((p): p is NonNullable<typeof p> => Boolean(p))
       return [
-        `Layout do grupo "${group.name}"`,
+        t('mod.layoutTitleGroup', { name: group.name }),
         groupProjects.map((p) => ({
           id: p.id,
           label: p.name,
           color: p.color,
-          hint: `${p.terminals.length} terminal(is)`,
+          hint: t('mod.terminalCount', { count: p.terminals.length }),
         })),
         group.gridLayout,
       ]
@@ -81,17 +83,17 @@ function DesignerInner({ context, onClose }: { context: Context; onClose: () => 
         .map((c) => projects.find((p) => p.id === c.projectId))
         .filter((p): p is NonNullable<typeof p> => Boolean(p))
       return [
-        'Layout da workspace',
+        t('mod.layoutTitleWorkspace'),
         openProjects.map((p) => ({
           id: p.id,
           label: p.name,
           color: p.color,
-          hint: `${p.terminals.length} terminal(is)`,
+          hint: t('mod.terminalCount', { count: p.terminals.length }),
         })),
         workspaceLayout,
       ]
     }
-    return ['Layout', [], undefined]
+    return [t('mod.layoutTitleFallback'), [], undefined]
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [context, project, group, projects, containers, workspaceLayout])
 
@@ -425,7 +427,7 @@ function DesignerInner({ context, onClose }: { context: Context; onClose: () => 
             <button
               type="button"
               className={styles.closeBtn}
-              aria-label="Fechar"
+              aria-label={t('mod.close')}
               onClick={onClose}
             >
               <X size={16} />
@@ -446,12 +448,9 @@ function DesignerInner({ context, onClose }: { context: Context; onClose: () => 
               onInc={() => setRows((v) => Math.min(8, v + 1))}
             />
             <button type="button" className={controls.btn} onClick={resetAuto}>
-              auto-arranjar
+              {t('mod.autoArrange')}
             </button>
-            <span className={styles.hint}>
-              arrasta o card pra mover · canto inferior-direito redimensiona ·
-              linhas entre cols/rows ajustam proporção
-            </span>
+            <span className={styles.hint}>{t('mod.layoutHint')}</span>
           </div>
 
           <div
@@ -538,7 +537,7 @@ function DesignerInner({ context, onClose }: { context: Context; onClose: () => 
                     className={styles.resizeHandle}
                     data-resize-handle="1"
                     onPointerDown={(e) => startResize(child.id, e)}
-                    title="arrastar pra redimensionar"
+                    title={t('mod.dragToResize')}
                   />
                 </div>
               )
@@ -553,18 +552,18 @@ function DesignerInner({ context, onClose }: { context: Context; onClose: () => 
                 onClick={clearWorkspace}
                 style={{ marginRight: 'auto' }}
               >
-                Remover layout custom
+                {t('mod.removeCustomLayout')}
               </button>
             ) : null}
             <button type="button" className={controls.btn} onClick={onClose}>
-              Cancelar
+              {t('mod.cancel')}
             </button>
             <button
               type="button"
               className={`${controls.btn} ${controls.btnPrimary}`}
               onClick={save}
             >
-              Salvar layout
+              {t('mod.saveLayout')}
             </button>
           </footer>
         </Dialog.Content>
@@ -584,14 +583,25 @@ function Stepper({
   onDec: () => void
   onInc: () => void
 }) {
+  const t = useT()
   return (
     <div className={styles.stepper}>
       <span className={styles.stepperLabel}>{label}</span>
-      <button type="button" className={styles.stepperBtn} onClick={onDec} aria-label={`menos ${label}`}>
+      <button
+        type="button"
+        className={styles.stepperBtn}
+        onClick={onDec}
+        aria-label={t('mod.decrease', { label })}
+      >
         <Minus size={12} />
       </button>
       <span className={styles.stepperValue}>{value}</span>
-      <button type="button" className={styles.stepperBtn} onClick={onInc} aria-label={`mais ${label}`}>
+      <button
+        type="button"
+        className={styles.stepperBtn}
+        onClick={onInc}
+        aria-label={t('mod.increase', { label })}
+      >
         <Plus size={12} />
       </button>
     </div>

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { intlLocale, useT } from '../../lib/i18n'
 import { getCachedClaudeActivity } from '../../lib/claudeActivityCache'
+import { useProjectsStore } from '../../stores/projectsStore'
 import type { ActivityDay } from '../../lib/tauri'
 import styles from './HomeView.module.css'
 
 const DAYS_TOTAL = 91 // 13 semanas × 7 dias
-const WEEKDAY_LABELS = ['', 'seg', '', 'qua', '', 'sex', '']
 
 /** Gera matriz semanas[col][weekday] alinhada por dia da semana. */
 function buildGrid(days: ActivityDay[]): (ActivityDay | null)[][] {
@@ -52,6 +53,9 @@ function totalAndDelta(days: ActivityDay[]): { total: number; deltaPct: number |
 }
 
 export function ActivityGraph() {
+  const t = useT()
+  const language = useProjectsStore((s) => s.preferences.language)
+  const weekdayLabels = ['', t('activity.weekdayMon'), '', t('activity.weekdayWed'), '', t('activity.weekdayFri'), '']
   const [days, setDays] = useState<ActivityDay[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -79,7 +83,7 @@ export function ActivityGraph() {
   const max = useMemo(() => days.reduce((m, d) => Math.max(m, d.count), 0), [days])
   const { total, deltaPct } = useMemo(() => totalAndDelta(days), [days])
 
-  const totalFormatted = total.toLocaleString('pt-BR')
+  const totalFormatted = total.toLocaleString(intlLocale(language))
   const deltaSign = deltaPct === null ? '' : deltaPct >= 0 ? '▲' : '▼'
   const deltaAbs = deltaPct === null ? null : Math.abs(deltaPct).toFixed(0)
   const deltaClass =
@@ -93,16 +97,16 @@ export function ActivityGraph() {
             <polyline points="2,12 5,8 8,10 11,4 14,6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <span className={styles.usageName}>atividade</span>
+        <span className={styles.usageName}>{t('activity.title')}</span>
         <span className={styles.usageTier}>90d</span>
       </div>
 
       <div className={styles.usageMain}>
         <div className={styles.usageMainValue}>{loading ? '—' : totalFormatted}</div>
         <div className={styles.usageMainLabel}>
-          <span>mensagens</span>
+          <span>{t('activity.messages')}</span>
           <span>·</span>
-          <span>últimos 90 dias</span>
+          <span>{t('activity.lastDays')}</span>
           {deltaAbs !== null && (
             <>
               <span>·</span>
@@ -116,13 +120,13 @@ export function ActivityGraph() {
 
       <div className={`${styles.usageBody} ${styles.usageBodyActivity}`}>
         {loading ? (
-          <div className={styles.activityHeatmapLoading}>carregando…</div>
+          <div className={styles.activityHeatmapLoading}>{t('activity.loading')}</div>
         ) : days.length === 0 ? (
-          <div className={styles.activityHeatmapLoading}>sem dados</div>
+          <div className={styles.activityHeatmapLoading}>{t('activity.noData')}</div>
         ) : (
           <div className={styles.activityHeatmap}>
             <div className={styles.activityWeekdays}>
-              {WEEKDAY_LABELS.map((label, i) => (
+              {weekdayLabels.map((label, i) => (
                 <span key={i}>{label}</span>
               ))}
             </div>
@@ -134,7 +138,10 @@ export function ActivityGraph() {
                       <div
                         key={ri}
                         className={`${styles.activityCell} ${intensityClass(day.count, max)}`}
-                        title={`${day.count} ${day.count === 1 ? 'mensagem' : 'mensagens'} em ${formatDateBR(day.date)}`}
+                        title={t(day.count === 1 ? 'activity.tooltipOne' : 'activity.tooltipMany', {
+                          count: day.count,
+                          date: formatDateBR(day.date),
+                        })}
                       />
                     ) : (
                       <div key={ri} className={`${styles.activityCell} ${styles.cellEmpty}`} />
@@ -148,15 +155,15 @@ export function ActivityGraph() {
       </div>
 
       <div className={styles.usageFooter}>
-        <span>{loading ? '—' : `${totalFormatted} msgs`}</span>
+        <span>{loading ? '—' : t('activity.msgsShort', { total: totalFormatted })}</span>
         <span className={styles.activityLegendGroup}>
-          <span className={styles.activityLegend}>menos</span>
+          <span className={styles.activityLegend}>{t('activity.less')}</span>
           <span className={`${styles.activityLegendCell} ${styles.cell0}`} />
           <span className={`${styles.activityLegendCell} ${styles.cell1}`} />
           <span className={`${styles.activityLegendCell} ${styles.cell2}`} />
           <span className={`${styles.activityLegendCell} ${styles.cell3}`} />
           <span className={`${styles.activityLegendCell} ${styles.cell4}`} />
-          <span className={styles.activityLegend}>mais</span>
+          <span className={styles.activityLegend}>{t('activity.more')}</span>
         </span>
       </div>
     </div>
