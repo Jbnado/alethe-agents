@@ -67,6 +67,6 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'Alethe v__VERSION__'
           releaseBody: 'Free desktop build of Alethe for Windows, macOS and Linux. Local app is free; cloud/sync services may be offered separately.'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
