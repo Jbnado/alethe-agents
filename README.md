@@ -2,7 +2,7 @@
 
 <br />
 <div align="center">
-  <a href="https://github.com/Kc1t/alethe">
+  <a href="https://github.com/Kc1t/alethe-agents">
     <img src="./src/assets/alethe-logo.png" alt="Alethe Logo" width="160">
   </a>
 
@@ -13,9 +13,9 @@
     <br />
     Built by Kc1t
     <br />
-    <a href="https://github.com/Kc1t/alethe/issues">Report Bug</a>
+    <a href="https://github.com/Kc1t/alethe-agents/issues">Report Bug</a>
     ·
-    <a href="https://github.com/Kc1t/alethe/issues">Request Feature</a>
+    <a href="https://github.com/Kc1t/alethe-agents/issues">Request Feature</a>
   </p>
 </div>
 
@@ -53,8 +53,8 @@ Built with Tauri, Rust, React, TypeScript, Vite, `portable-pty`, and `xterm.js`.
 Use the published installers from **Releases**, or run/build from source:
 
 ```sh
-git clone https://github.com/Kc1t/alethe.git
-cd alethe
+git clone https://github.com/Kc1t/alethe-agents.git
+cd alethe-agents
 npm install
 
 # run the desktop app in development mode
@@ -156,6 +156,6 @@ Kauã Miguel
 
 - Portfolio: <https://kc1t.com>
 - GitHub: <https://github.com/Kc1t>
-- Project: <https://github.com/Kc1t/alethe>
+- Project: <https://github.com/Kc1t/alethe-agents>
 
 <p align="right">(<a href="#readme-top">Back to top</a>)</p>
