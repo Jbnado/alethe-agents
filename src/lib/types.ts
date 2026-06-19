@@ -153,6 +153,8 @@ export type Preferences = {
   /** Credenciais locais do Spotify Developer Dashboard para Now Playing. */
   spotifyClientId: string
   spotifyClientSecret: string
+  /** Exibe a atividade atual do Alethe no perfil do Discord. */
+  discordRichPresenceEnabled: boolean
   /** v2.2 — grid layout custom da workspace inteira (cross-grupo). */
   workspaceGridLayout?: GridLayout
 }
@@ -192,6 +194,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   alwaysStartOnHome: false,
   spotifyClientId: '',
   spotifyClientSecret: '',
+  discordRichPresenceEnabled: true,
 }
 
 export const EMPTY_PROJECTS_FILE: ProjectsFile = {

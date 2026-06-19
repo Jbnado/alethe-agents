@@ -238,6 +238,28 @@ export function PreferencesModal() {
           </div>
         </div>
       </Section>
+
+      <Section title={t('prefs.discordPresence')}>
+        <div className={controls.pillRow}>
+          <button
+            type="button"
+            className={`${controls.pill} ${preferences.discordRichPresenceEnabled ? controls.pillActive : ''}`}
+            onClick={() => setPreferences({ discordRichPresenceEnabled: true })}
+          >
+            {t('prefs.discordPresenceEnabled')}
+          </button>
+          <button
+            type="button"
+            className={`${controls.pill} ${!preferences.discordRichPresenceEnabled ? controls.pillActive : ''}`}
+            onClick={() => setPreferences({ discordRichPresenceEnabled: false })}
+          >
+            {t('prefs.discordPresenceDisabled')}
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--fg-faint)', lineHeight: 1.45 }}>
+          {t('prefs.discordPresenceHint')}
+        </div>
+      </Section>
     </Modal>
   )
 }

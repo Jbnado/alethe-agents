@@ -1,11 +1,9 @@
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { Bell, X } from 'lucide-react'
-import { type CSSProperties, useEffect } from 'react'
+import { lazy, Suspense, type CSSProperties, useEffect } from 'react'
 
-import { AgentCanvasPOC } from './components/AgentCanvasPOC'
 import { AgentIcon } from './components/icons/AgentIcons'
 import { FocusOverlay } from './components/FocusOverlay'
-import { HomeView } from './components/HomeView'
 import { MainMenu } from './components/MainMenu'
 import { ProjectSidebar } from './components/ProjectSidebar'
 import { TitleBar } from './components/TitleBar'
@@ -13,8 +11,6 @@ import { WorkspaceView } from './components/WorkspaceView'
 import { FindJumpModal } from './components/modals/FindJumpModal'
 import { EditGroupModal } from './components/modals/EditGroupModal'
 import { EditProjectModal } from './components/modals/EditProjectModal'
-import { LayoutDesignerModal } from './components/modals/LayoutDesignerModal'
-import { MemoryAnalyticsModal } from './components/modals/MemoryAnalyticsModal'
 import { NewGroupModal } from './components/modals/NewGroupModal'
 import { NewProjectModal } from './components/modals/NewProjectModal'
 import { NewSubTabModal } from './components/modals/NewSubTabModal'
@@ -26,10 +22,28 @@ import { SuspendGroupModal } from './components/modals/SuspendGroupModal'
 import { ThemePickerModal } from './components/modals/ThemePickerModal'
 import { WelcomeModal } from './components/modals/WelcomeModal'
 import { useKeybindings } from './hooks/useKeybindings'
+import { useDiscordPresence } from './hooks/useDiscordPresence'
 import { useProjectsStore } from './stores/projectsStore'
 import { type InAppToast, useUiStore } from './stores/uiStore'
 import styles from './App.module.css'
 import logoLoading from './assets/logo-loading.png'
+
+const AgentCanvasPOC = lazy(() =>
+  import('./components/AgentCanvasPOC').then((module) => ({ default: module.AgentCanvasPOC })),
+)
+const HomeView = lazy(() =>
+  import('./components/HomeView').then((module) => ({ default: module.HomeView })),
+)
+const LayoutDesignerModal = lazy(() =>
+  import('./components/modals/LayoutDesignerModal').then((module) => ({
+    default: module.LayoutDesignerModal,
+  })),
+)
+const MemoryAnalyticsModal = lazy(() =>
+  import('./components/modals/MemoryAnalyticsModal').then((module) => ({
+    default: module.MemoryAnalyticsModal,
+  })),
+)
 
 function LoadingScreen() {
   return (
@@ -98,9 +112,11 @@ export default function App() {
   const uiZoom = useProjectsStore((s) => s.preferences.uiZoom)
   const language = useProjectsStore((s) => s.preferences.language)
   const activeView = useUiStore((s) => s.activeView)
+  const openModal = useUiStore((s) => s.openModal)
   const sidebarVisible = useUiStore((s) => s.sidebarVisible)
 
   useKeybindings()
+  useDiscordPresence()
 
   useEffect(() => {
     void hydrate()
@@ -149,13 +165,15 @@ export default function App() {
         <TitleBar />
         <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           {sidebarVisible ? <ProjectSidebar /> : null}
-          {activeView === 'home' ? (
-            <HomeView />
-          ) : activeView === 'agentCanvas' ? (
-            <AgentCanvasPOC />
-          ) : (
-            <WorkspaceView />
-          )}
+          <Suspense fallback={<LoadingScreen />}>
+            {activeView === 'home' ? (
+              <HomeView />
+            ) : activeView === 'agentCanvas' ? (
+              <AgentCanvasPOC />
+            ) : (
+              <WorkspaceView />
+            )}
+          </Suspense>
         </div>
       </div>
       <FocusOverlay />
@@ -171,9 +189,17 @@ export default function App() {
       <FindJumpModal />
       <OnboardingModal />
       <WelcomeModal />
-      <LayoutDesignerModal />
+      {openModal === 'layoutDesigner' ? (
+        <Suspense fallback={null}>
+          <LayoutDesignerModal />
+        </Suspense>
+      ) : null}
       <SuspendGroupModal />
-      <MemoryAnalyticsModal />
+      {openModal === 'memoryAnalytics' ? (
+        <Suspense fallback={null}>
+          <MemoryAnalyticsModal />
+        </Suspense>
+      ) : null}
       <ThemePickerModal />
       <InAppNotifications />
     </>

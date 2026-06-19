@@ -6,6 +6,7 @@ mod claude_usage;
 mod cli_resolver;
 mod codex_sessions;
 mod diagnostics;
+mod discord_presence;
 mod economy_agents;
 mod paths;
 mod projects;
@@ -28,6 +29,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .manage(sessions)
+        .manage(discord_presence::DiscordPresence::new())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
@@ -72,6 +74,8 @@ pub fn run() {
             diagnostics::read_clipboard_text,
             diagnostics::write_clipboard_text,
             diagnostics::reset_app_data,
+            discord_presence::set_discord_presence,
+            discord_presence::clear_discord_presence,
             stats::get_memory_stats,
             spotify::spotify_login,
             spotify::spotify_logout,

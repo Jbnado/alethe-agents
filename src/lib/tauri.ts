@@ -160,6 +160,18 @@ export async function resetAppData(): Promise<void> {
   await invoke('reset_app_data')
 }
 
+export async function setDiscordPresence(
+  details: string,
+  state: string,
+  startedAt: number,
+): Promise<void> {
+  await invoke('set_discord_presence', { details, state, startedAt })
+}
+
+export async function clearDiscordPresence(): Promise<void> {
+  await invoke('clear_discord_presence')
+}
+
 export async function findCliLauncher(agent: string): Promise<string | null> {
   return invoke<string | null>('find_cli_launcher', { agent })
 }
