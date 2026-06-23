@@ -301,6 +301,25 @@ pub fn spawn_pty(
     Ok(SpawnPtyResponse { id })
 }
 
+/// Mata a árvore de processos inteira (o filho direto + todos os descendentes) a
+/// partir do PID. `portable_pty::Child::kill()` no Windows só mata o processo
+/// direto (o shell/ConPTY) — `node`/`claude`/`codex` e seus filhos (MCP, workers)
+/// ficam órfãos, vazando processos e RAM a cada close/restart. `taskkill /F /T`
+/// derruba a árvore toda. Deve ser chamado ANTES de `child.kill()` (com o pai
+/// ainda vivo, senão a travessia da árvore não encontra os netos reparentados).
+#[cfg(windows)]
+fn kill_process_tree(pid: u32) {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let _ = std::process::Command::new("taskkill")
+        .args(["/F", "/T", "/PID", &pid.to_string()])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output();
+}
+
+#[cfg(not(windows))]
+fn kill_process_tree(_pid: u32) {}
+
 #[tauri::command]
 pub fn restart_pty(
     app: AppHandle,
@@ -316,6 +335,9 @@ pub fn restart_pty(
             .map_err(|_| "PTY sessions lock poisoned".to_string())?;
         if let Some(session) = sessions.remove(&id) {
             if let Ok(mut child) = session.child.lock() {
+                if let Some(pid) = child.process_id() {
+                    kill_process_tree(pid);
+                }
                 let _ = child.kill();
             }
         }
@@ -433,6 +455,9 @@ pub fn kill_pty(
 
     if let Some(session) = sessions.remove(&id) {
         if let Ok(mut child) = session.child.lock() {
+            if let Some(pid) = child.process_id() {
+                kill_process_tree(pid);
+            }
             let _ = child.kill();
         }
     }

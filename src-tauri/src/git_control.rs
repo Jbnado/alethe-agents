@@ -24,18 +24,31 @@ pub struct GitRepositoryStatus {
     conflicts: Vec<GitFileChange>,
 }
 
+/// Aplica CREATE_NO_WINDOW no Windows pra que `git.exe` NÃO abra uma janela de
+/// console a cada chamada. O GitControl faz polling de status a cada 3s (+ no
+/// focus), então sem isso o usuário vê um festival de "terminais" piscando —
+/// janelas de console abrindo e fechando sozinhas. No-op fora do Windows.
+#[cfg(windows)]
+fn hide_console(command: &mut Command) {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    command.creation_flags(CREATE_NO_WINDOW);
+}
+
+#[cfg(not(windows))]
+fn hide_console(_command: &mut Command) {}
+
 fn git_command(cwd: &Path, args: &[&str]) -> Result<Output, String> {
-    Command::new("git")
-        .current_dir(cwd)
-        .args(args)
-        .output()
-        .map_err(|error| {
-            if error.kind() == std::io::ErrorKind::NotFound {
-                "git_not_found".to_string()
-            } else {
-                format!("git_exec_failed:{error}")
-            }
-        })
+    let mut command = Command::new("git");
+    command.current_dir(cwd).args(args);
+    hide_console(&mut command);
+    command.output().map_err(|error| {
+        if error.kind() == std::io::ErrorKind::NotFound {
+            "git_not_found".to_string()
+        } else {
+            format!("git_exec_failed:{error}")
+        }
+    })
 }
 
 fn push_if_dir(candidates: &mut Vec<PathBuf>, path: PathBuf) {
@@ -160,6 +173,7 @@ fn run_path_command(root: &Path, args: &[&str], paths: &[String]) -> Result<(), 
     for path in paths {
         command.arg(path);
     }
+    hide_console(&mut command);
     let output = command.output().map_err(|error| {
         if error.kind() == std::io::ErrorKind::NotFound {
             "git_not_found".to_string()
@@ -333,6 +347,56 @@ pub fn git_commit(repo_root: String, message: String) -> Result<String, String> 
     }
     let output = checked_output(&root, &["commit", "-m", trimmed])?;
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+/// Comando git que fala com o remoto (push/pull). `GIT_TERMINAL_PROMPT=0` faz o
+/// git FALHAR rápido em vez de TRAVAR esperando credenciais num prompt que não
+/// existe (sem TTY no PTY oculto) — usa o credential helper / SSH agent já
+/// configurados na máquina. stdout+stderr são combinados porque o git escreve o
+/// progresso de rede no stderr mesmo em sucesso.
+fn remote_command(root: &Path, args: &[&str]) -> Result<String, String> {
+    let mut command = Command::new("git");
+    command
+        .current_dir(root)
+        .args(args)
+        .env("GIT_TERMINAL_PROMPT", "0");
+    hide_console(&mut command);
+    let output = command.output().map_err(|error| {
+        if error.kind() == std::io::ErrorKind::NotFound {
+            "git_not_found".to_string()
+        } else {
+            format!("git_exec_failed:{error}")
+        }
+    })?;
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Ok(format!("{} {}", stdout.trim(), stderr.trim()).trim().to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        Err(format!("git_command_failed:{stderr}"))
+    }
+}
+
+#[tauri::command]
+pub fn git_push(repo_root: String) -> Result<String, String> {
+    let root = validated_root(&repo_root)?;
+    match remote_command(&root, &["push"]) {
+        // Branch sem upstream: publica em origin/<branch> (equivalente ao
+        // "Publish Branch" do VSCode). Falha se o remoto não se chamar 'origin'.
+        Err(error) if error.contains("no upstream") || error.contains("has no upstream") => {
+            remote_command(&root, &["push", "--set-upstream", "origin", "HEAD"])
+        }
+        other => other,
+    }
+}
+
+#[tauri::command]
+pub fn git_pull(repo_root: String) -> Result<String, String> {
+    let root = validated_root(&repo_root)?;
+    // --ff-only evita merge commit/conflito surpresa: se a branch divergiu, erra
+    // limpo em vez de criar um merge automático.
+    remote_command(&root, &["pull", "--ff-only"])
 }
 
 #[cfg(test)]

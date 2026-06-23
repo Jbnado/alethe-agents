@@ -102,6 +102,8 @@ pub fn run() {
             git_control::git_unstage,
             git_control::git_discard,
             git_control::git_commit,
+            git_control::git_push,
+            git_control::git_pull,
             diagnostics::open_data_folder,
             diagnostics::open_spawn_log,
             diagnostics::open_in_file_explorer,

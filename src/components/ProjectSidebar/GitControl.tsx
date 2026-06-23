@@ -1,7 +1,10 @@
 import {
+  ArrowDown,
+  ArrowUp,
   Check,
   ChevronDown,
   ChevronRight,
+  Folder,
   GitBranch,
   Minus,
   Plus,
@@ -15,6 +18,8 @@ import {
   getPtyCwd,
   gitCommit,
   gitDiscard,
+  gitPull,
+  gitPush,
   gitStage,
   gitStatus,
   gitUnstage,
@@ -48,6 +53,10 @@ export function GitControl({ cwd, ptyId, terminalName }: GitControlProps) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const requestId = useRef(0)
+  // Coalesce refreshes automáticos (interval + focus) — defesa extra contra
+  // rajadas de eventos de foco que poderiam disparar git em loop. Refresh manual
+  // (quiet=false) ignora o throttle.
+  const lastAutoRefreshRef = useRef(0)
 
   useEffect(() => {
     setLiveCwd(cwd)
@@ -62,6 +71,11 @@ export function GitControl({ cwd, ptyId, terminalName }: GitControlProps) {
   }, [cwd, ptyId])
 
   const refresh = useCallback(async (quiet = false) => {
+    if (quiet) {
+      const now = Date.now()
+      if (now - lastAutoRefreshRef.current < 1500) return
+      lastAutoRefreshRef.current = now
+    }
     if (!liveCwd) {
       setStatus(null)
       setError('directory_not_found')
@@ -134,6 +148,16 @@ export function GitControl({ cwd, ptyId, terminalName }: GitControlProps) {
     }, t('git.commit.done'))
   }
 
+  // Sync estilo VSCode: puxa se está atrás, empurra sempre (push sem nada a
+  // enviar é "Everything up-to-date"; sem upstream, publica a branch).
+  const sync = async () => {
+    if (!status || busy) return
+    await run(async () => {
+      if (status.behind > 0) await gitPull(status.repoRoot)
+      await gitPush(status.repoRoot)
+    }, t('git.sync.done'))
+  }
+
   if (!liveCwd) {
     return <GitMessage title={t('git.empty.noFolder')} description={t('git.empty.noFolderDesc')} />
   }
@@ -154,6 +178,7 @@ export function GitControl({ cwd, ptyId, terminalName }: GitControlProps) {
 
   if (!status) return null
   const total = status.staged.length + status.changes.length + status.untracked.length + status.conflicts.length
+  const syncTitle = t('git.sync.title', { ahead: status.ahead, behind: status.behind })
 
   return (
     <div className={styles.panel} aria-busy={busy}>
@@ -171,10 +196,20 @@ export function GitControl({ cwd, ptyId, terminalName }: GitControlProps) {
         <GitBranch size={13} />
         <span>{status.branch}</span>
         {status.detached ? <small>{t('git.detached')}</small> : null}
-        <div className={styles.divergence}>
-          {status.ahead > 0 ? <span title={t('git.ahead', { count: status.ahead })}>↑{status.ahead}</span> : null}
-          {status.behind > 0 ? <span title={t('git.behind', { count: status.behind })}>↓{status.behind}</span> : null}
-        </div>
+        <button
+          type="button"
+          className={styles.syncButton}
+          onClick={() => void sync()}
+          disabled={busy || status.detached}
+          title={syncTitle}
+          aria-label={syncTitle}
+        >
+          <RefreshCw size={12} className={busy ? styles.spinning : undefined} />
+          <span className={styles.syncCounts}>
+            <span><ArrowDown size={11} />{status.behind}</span>
+            <span><ArrowUp size={11} />{status.ahead}</span>
+          </span>
+        </button>
       </div>
 
       <div className={styles.commitBox}>
@@ -188,16 +223,21 @@ export function GitControl({ cwd, ptyId, terminalName }: GitControlProps) {
           aria-label={t('git.commit.placeholder')}
           rows={2}
         />
-        <button type="button" className={styles.commitButton} disabled={!message.trim() || busy || total === 0} onClick={() => void commit()}>
-          <Check size={14} />{busy ? t('git.commit.busy') : t('git.commit.action')}
-        </button>
+        <div className={styles.commitRow}>
+          <button type="button" className={styles.commitButton} disabled={!message.trim() || busy || total === 0} onClick={() => void commit()}>
+            <Check size={14} />{busy ? t('git.commit.busy') : t('git.commit.action')}
+          </button>
+          <button type="button" className={styles.syncWide} disabled={busy || status.detached} onClick={() => void sync()} title={syncTitle}>
+            <RefreshCw size={13} className={busy ? styles.spinning : undefined} />{t('git.sync.action')}
+          </button>
+        </div>
       </div>
 
       <div className={styles.groups}>
         <ChangeGroup kind="staged" label={t('git.group.staged')} items={status.staged} disabled={busy} onPrimary={(paths) => run(() => gitUnstage(status.repoRoot, paths))} />
+        <ChangeGroup kind="conflicts" label={t('git.group.conflicts')} items={status.conflicts} disabled={busy} onPrimary={(paths) => run(() => gitStage(status.repoRoot, paths))} />
         <ChangeGroup kind="changes" label={t('git.group.changes')} items={status.changes} disabled={busy} onPrimary={(paths) => run(() => gitStage(status.repoRoot, paths))} onDiscard={(paths) => run(() => gitDiscard(status.repoRoot, paths, false))} />
         <ChangeGroup kind="untracked" label={t('git.group.untracked')} items={status.untracked} disabled={busy} onPrimary={(paths) => run(() => gitStage(status.repoRoot, paths))} onDiscard={(paths) => run(() => gitDiscard(status.repoRoot, paths, true))} />
-        <ChangeGroup kind="conflicts" label={t('git.group.conflicts')} items={status.conflicts} disabled={busy} onPrimary={(paths) => run(() => gitStage(status.repoRoot, paths))} />
         {total === 0 ? <div className={styles.clean}><Check size={18} /><strong>{t('git.clean')}</strong><span>{t('git.cleanDesc')}</span></div> : null}
       </div>
     </div>
@@ -214,6 +254,7 @@ function ChangeGroup({ kind, label, items, disabled, onPrimary, onDiscard }: {
 }) {
   const t = useT()
   const [open, setOpen] = useState(true)
+  const tree = useMemo(() => buildTree(items), [items])
   if (items.length === 0) return null
   const paths = uniquePaths(items)
   const primaryTitle = kind === 'staged' ? t('git.unstageAll') : t('git.stageAll')
@@ -232,20 +273,79 @@ function ChangeGroup({ kind, label, items, disabled, onPrimary, onDiscard }: {
           <button type="button" disabled={disabled} title={primaryTitle} aria-label={primaryTitle} onClick={() => onPrimary(paths)}>{kind === 'staged' ? <Minus size={14} /> : <Plus size={14} />}</button>
         </div>
       </div>
-      {open ? <div className={styles.files}>{items.map((item) => (
-        <div className={styles.file} key={`${kind}:${item.path}`} title={item.originalPath ? `${item.originalPath} → ${item.path}` : item.path}>
-          <div className={styles.fileCopy}>
-            <span className={styles.fileName}>{baseName(item.path)}</span>
-            <span className={styles.filePath}>{parentPath(item.path)}</span>
-          </div>
-          <span className={styles.status}>{item.status}</span>
-          <div className={styles.fileActions}>
-            {onDiscard ? <button type="button" disabled={disabled} title={t('git.discard')} aria-label={t('git.discard')} onClick={() => confirmDiscard([item.path])}><RotateCcw size={12} /></button> : null}
-            <button type="button" disabled={disabled} title={kind === 'staged' ? t('git.unstage') : t('git.stage')} aria-label={kind === 'staged' ? t('git.unstage') : t('git.stage')} onClick={() => onPrimary([item.path])}>{kind === 'staged' ? <Minus size={13} /> : <Plus size={13} />}</button>
-          </div>
+      {open ? (
+        <div className={styles.tree}>
+          {tree.map((node) => (
+            <TreeNodeView
+              key={node.type === 'dir' ? `d:${node.path}` : `f:${node.change.path}`}
+              node={node}
+              kind={kind}
+              depth={0}
+              disabled={disabled}
+              onPrimary={onPrimary}
+              onDiscard={onDiscard ? confirmDiscard : undefined}
+            />
+          ))}
         </div>
-      ))}</div> : null}
+      ) : null}
     </section>
+  )
+}
+
+function TreeNodeView({ node, kind, depth, disabled, onPrimary, onDiscard }: {
+  node: TreeNode
+  kind: GroupKind
+  depth: number
+  disabled: boolean
+  onPrimary: (paths: string[]) => void
+  onDiscard?: (paths: string[]) => void
+}) {
+  const t = useT()
+  const [open, setOpen] = useState(true)
+  const indent = { paddingLeft: 8 + depth * 12 }
+
+  if (node.type === 'file') {
+    const change = node.change
+    const isStaged = kind === 'staged'
+    return (
+      <div className={styles.file} style={indent} title={change.originalPath ? `${change.originalPath} → ${change.path}` : change.path}>
+        <span className={styles.fileName}>{node.name}</span>
+        <span className={`${styles.status} ${statusClass(kind, change.status)}`}>{statusChar(kind, change.status)}</span>
+        <div className={styles.fileActions}>
+          {onDiscard ? <button type="button" disabled={disabled} title={t('git.discard')} aria-label={t('git.discard')} onClick={() => onDiscard([change.path])}><RotateCcw size={12} /></button> : null}
+          <button type="button" disabled={disabled} title={isStaged ? t('git.unstage') : t('git.stage')} aria-label={isStaged ? t('git.unstage') : t('git.stage')} onClick={() => onPrimary([change.path])}>{isStaged ? <Minus size={13} /> : <Plus size={13} />}</button>
+        </div>
+      </div>
+    )
+  }
+
+  const descendants = collectPaths(node)
+  const isStaged = kind === 'staged'
+  return (
+    <>
+      <div className={styles.dir} style={indent}>
+        <button type="button" className={styles.dirToggle} onClick={() => setOpen((value) => !value)}>
+          {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          <Folder size={13} className={styles.dirIcon} />
+          <span className={styles.dirName}>{node.name}</span>
+        </button>
+        <div className={styles.fileActions}>
+          {onDiscard ? <button type="button" disabled={disabled} title={t('git.discardAll')} aria-label={t('git.discardAll')} onClick={() => onDiscard(descendants)}><RotateCcw size={12} /></button> : null}
+          <button type="button" disabled={disabled} title={isStaged ? t('git.unstageAll') : t('git.stageAll')} aria-label={isStaged ? t('git.unstageAll') : t('git.stageAll')} onClick={() => onPrimary(descendants)}>{isStaged ? <Minus size={13} /> : <Plus size={13} />}</button>
+        </div>
+      </div>
+      {open ? node.children.map((child) => (
+        <TreeNodeView
+          key={child.type === 'dir' ? `d:${child.path}` : `f:${child.change.path}`}
+          node={child}
+          kind={kind}
+          depth={depth + 1}
+          disabled={disabled}
+          onPrimary={onPrimary}
+          onDiscard={onDiscard}
+        />
+      )) : null}
+    </>
   )
 }
 
@@ -253,18 +353,77 @@ function GitMessage({ title, description, action }: { title: string; description
   return <div className={styles.message}><GitBranch size={22} /><strong>{title}</strong>{description ? <span>{description}</span> : null}{action}</div>
 }
 
+// ---- árvore de arquivos (estilo VSCode, com folder compression) ----
+
+type DirNode = { type: 'dir'; name: string; path: string; children: TreeNode[] }
+type FileNode = { type: 'file'; name: string; change: GitFileChange }
+type TreeNode = DirNode | FileNode
+
+function buildTree(items: GitFileChange[]): TreeNode[] {
+  const root: DirNode = { type: 'dir', name: '', path: '', children: [] }
+  for (const change of items) {
+    const parts = change.path.split('/')
+    const fileName = parts.pop() ?? change.path
+    let cursor = root
+    let acc = ''
+    for (const part of parts) {
+      acc = acc ? `${acc}/${part}` : part
+      let next = cursor.children.find(
+        (child): child is DirNode => child.type === 'dir' && child.name === part,
+      )
+      if (!next) {
+        next = { type: 'dir', name: part, path: acc, children: [] }
+        cursor.children.push(next)
+      }
+      cursor = next
+    }
+    cursor.children.push({ type: 'file', name: fileName, change })
+  }
+  return root.children.map(compress).sort(compareNodes)
+}
+
+/** Comprime cadeias de pastas com filho único (a/b/c → "a/b/c"), como o VSCode. */
+function compress(node: TreeNode): TreeNode {
+  if (node.type === 'file') return node
+  let current = node
+  while (current.children.length === 1 && current.children[0].type === 'dir') {
+    const only = current.children[0]
+    current = { type: 'dir', name: `${current.name}/${only.name}`, path: only.path, children: only.children }
+  }
+  current.children = current.children.map(compress).sort(compareNodes)
+  return current
+}
+
+/** Pastas antes de arquivos, cada bloco em ordem alfabética. */
+function compareNodes(a: TreeNode, b: TreeNode): number {
+  if (a.type !== b.type) return a.type === 'dir' ? -1 : 1
+  return a.name.localeCompare(b.name)
+}
+
+function collectPaths(node: TreeNode): string[] {
+  if (node.type === 'file') return [node.change.path]
+  return node.children.flatMap(collectPaths)
+}
+
+function statusClass(kind: GroupKind, status: string): string {
+  if (kind === 'untracked') return styles.stAdded
+  if (kind === 'conflicts') return styles.stConflict
+  const code = (status.trim()[0] ?? '').toUpperCase()
+  if (code === 'A') return styles.stAdded
+  if (code === 'D') return styles.stDeleted
+  if (code === 'R' || code === 'C') return styles.stRenamed
+  if (code === 'M') return styles.stModified
+  return styles.stOther
+}
+
+function statusChar(kind: GroupKind, status: string): string {
+  if (kind === 'untracked') return 'U'
+  if (kind === 'conflicts') return '!'
+  return (status.trim()[0] ?? '•').toUpperCase()
+}
+
 function uniquePaths(items: GitFileChange[]): string[] {
   return [...new Set(items.map((item) => item.path))]
-}
-
-function baseName(path: string): string {
-  return path.split('/').pop() || path
-}
-
-function parentPath(path: string): string {
-  const parts = path.split('/')
-  parts.pop()
-  return parts.join('/')
 }
 
 function errorCode(error: unknown): string {

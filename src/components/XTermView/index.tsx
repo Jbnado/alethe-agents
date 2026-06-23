@@ -790,7 +790,17 @@ export function XTermView({
 
     async function start() {
       try {
-        fitAddon.fit()
+        // Fit inicial só com dimensões válidas. Um fit em container 0×0 (pane
+        // recém-montado/colapsado) deixa o renderer sem dimensões e o
+        // syncScrollArea assíncrono do xterm estoura depois com "Cannot read
+        // properties of undefined (reading 'dimensions')". Se ainda não tem
+        // layout, o ResizeObserver + initialFitTimer refazem o fit quando estabiliza.
+        try {
+          const rect = container?.getBoundingClientRect()
+          if (rect && rect.width >= 50 && rect.height >= 30) fitAddon.fit()
+        } catch {
+          /* sem layout ainda — o resize agendado cobre */
+        }
         setCommandNotFound(null)
         setBootPhase('queued')
 

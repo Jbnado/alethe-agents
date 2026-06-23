@@ -148,6 +148,14 @@ export async function gitCommit(repoRoot: string, message: string): Promise<stri
   return invoke<string>('git_commit', { repoRoot, message })
 }
 
+export async function gitPush(repoRoot: string): Promise<string> {
+  return invoke<string>('git_push', { repoRoot })
+}
+
+export async function gitPull(repoRoot: string): Promise<string> {
+  return invoke<string>('git_pull', { repoRoot })
+}
+
 export async function readTextFile(path: string): Promise<string> {
   return invoke<string>('read_text_file', { path })
 }
