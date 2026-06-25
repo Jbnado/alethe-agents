@@ -147,14 +147,14 @@ pub fn find_vscode_launcher() -> Option<PathBuf> {
     if !cfg!(windows) {
         return None;
     }
-    let candidates = [
-        "code.cmd",
-        "code-insiders.cmd",
+    let root_candidates = ["Code.exe", "Code - Insiders.exe"];
+    let path_candidates = [
         "code.exe",
         "code-insiders.exe",
+        "code.cmd",
+        "code-insiders.cmd",
     ];
     let mut dirs: Vec<PathBuf> = Vec::new();
-    dirs.extend(split_windows_path_expanded(&rebuilt_path()));
     if let Some(local) = env::var_os("LOCALAPPDATA").map(PathBuf::from) {
         dirs.push(local.join("Programs").join("Microsoft VS Code").join("bin"));
         dirs.push(
@@ -171,8 +171,19 @@ pub fn find_vscode_launcher() -> Option<PathBuf> {
     if let Some(pf86) = env::var_os("ProgramFiles(x86)").map(PathBuf::from) {
         dirs.push(pf86.join("Microsoft VS Code").join("bin"));
     }
+
+    for app_dir in dirs.iter().filter_map(|dir| dir.parent()) {
+        for name in root_candidates {
+            let candidate = app_dir.join(name);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
+
+    dirs.splice(0..0, split_windows_path_expanded(&rebuilt_path()));
     for dir in dirs {
-        for name in candidates {
+        for name in path_candidates {
             let candidate = dir.join(name);
             if candidate.is_file() {
                 return Some(candidate);

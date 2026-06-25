@@ -65,16 +65,23 @@ pub fn open_in_vscode(path: String) -> Result<(), String> {
         .and_then(|s| s.to_str())
         .map(|s| s.eq_ignore_ascii_case("cmd"))
         .unwrap_or(false);
+    #[cfg(target_os = "windows")]
+    use std::os::windows::process::CommandExt;
+    #[cfg(target_os = "windows")]
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
     let result = if is_cmd {
-        Command::new("cmd")
-            .arg("/C")
-            .arg(launcher.as_os_str())
-            .arg(target.as_os_str())
-            .spawn()
+        let mut command = Command::new("cmd");
+        command.arg("/C").arg(launcher.as_os_str()).arg(target.as_os_str());
+        #[cfg(target_os = "windows")]
+        command.creation_flags(CREATE_NO_WINDOW);
+        command.spawn()
     } else {
-        Command::new(launcher.as_os_str())
-            .arg(target.as_os_str())
-            .spawn()
+        let mut command = Command::new(launcher.as_os_str());
+        command.arg(target.as_os_str());
+        #[cfg(target_os = "windows")]
+        command.creation_flags(CREATE_NO_WINDOW);
+        command.spawn()
     };
     result.map(|_| ()).map_err(|e| e.to_string())
 }

@@ -1030,6 +1030,32 @@ export const useProjectsStore = create<ProjectsState>((set, get) => {
             ),
           )
           const remainingProjects = state.projects.filter((p) => !projectsToRemove.has(p.id))
+          const tabs = state.workspace.tabs
+            .filter(
+              (tab) =>
+                !(tab.kind === 'group' && groupsToRemove.has(tab.sourceId ?? tab.id)) &&
+                !(tab.kind === 'project' && projectsToRemove.has(tab.sourceId ?? tab.id)) &&
+                !(tab.kind === 'terminal' && projectsToRemove.has(tab.sourceProjectId ?? '')),
+            )
+            .map((tab) => ({
+              ...tab,
+              snapshot: sanitizeWorkspaceSnapshot(tab.snapshot, remainingProjects),
+            }))
+          const tabIds = new Set(tabs.map((tab) => tab.id))
+          const activeTabId = tabIds.has(state.workspace.activeTabId ?? '')
+            ? state.workspace.activeTabId
+            : tabs[0]?.id ?? null
+          const history = state.workspace.history
+            .filter((entry) => tabIds.has(entry.tabId))
+            .map((entry) => {
+              const tab = tabs.find((tab) => tab.id === entry.tabId)
+              return {
+                ...entry,
+                snapshot: tab
+                  ? sanitizeWorkspaceSnapshot(entry.snapshot, remainingProjects)
+                  : entry.snapshot,
+              }
+            })
           return {
             groups: state.groups.filter((g) => !groupsToRemove.has(g.id)),
             projects: remainingProjects,
@@ -1046,6 +1072,10 @@ export const useProjectsStore = create<ProjectsState>((set, get) => {
                   ? !groupsToRemove.has(tab.id)
                   : !projectsToRemove.has(tab.id),
               ),
+              tabs,
+              activeTabId,
+              history,
+              historyIndex: Math.min(state.workspace.historyIndex, history.length - 1),
             },
             activeProjectId: projectsToRemove.has(state.activeProjectId ?? '')
               ? (remainingProjects[0]?.id ?? null)

@@ -514,6 +514,7 @@ function AgentCanvasInner() {
   const leadNotifiedRef = useRef(false)
   // Refs pra cleanup matar PTYs sem virar dependência dos effects.
   const codexWorkersRef = useRef<CodexWorker[]>([])
+  const workerExitUnlistenersRef = useRef(new Map<string, () => void>())
   const sessionRef = useRef(session)
   useEffect(() => {
     codexWorkersRef.current = codexWorkers
@@ -582,7 +583,10 @@ function AgentCanvasInner() {
         .then(() => {
           // Captura o término mesmo com o terminal fechado — senão o card de um
           // one-shot ficaria "running" pra sempre.
+          let unlistenExit: (() => void) | null = null
           void listenPtyExit(ptyId, (code) => {
+            unlistenExit?.()
+            workerExitUnlistenersRef.current.delete(ptyId)
             console.log('[AgentCanvasPOC] worker', ptyId, 'saiu, code', code)
             setCodexWorkers((prev) =>
               prev.map((w) => (w.ptyId === ptyId ? { ...w, exitedCode: code ?? 0 } : w)),
@@ -598,7 +602,10 @@ function AgentCanvasInner() {
                 )
               })
               .catch(() => {})
-          })
+          }).then((unlisten) => {
+            unlistenExit = unlisten
+            workerExitUnlistenersRef.current.set(ptyId, unlisten)
+          }).catch(() => {})
         })
         .catch((err) => console.error('[AgentCanvasPOC] falha spawnando PTY do worker:', err))
       if (opts.open) setExpandedCodexId(ptyId)
@@ -616,6 +623,8 @@ function AgentCanvasInner() {
 
   const killCodexWorker = useCallback((ptyId: string) => {
     console.log('[AgentCanvasPOC] matando worker', ptyId)
+    workerExitUnlistenersRef.current.get(ptyId)?.()
+    workerExitUnlistenersRef.current.delete(ptyId)
     void killPty(ptyId).catch(() => {})
     setCodexWorkers((prev) => prev.filter((w) => w.ptyId !== ptyId))
     setExpandedCodexId((cur) => (cur === ptyId ? null : cur))
@@ -927,8 +936,10 @@ function AgentCanvasInner() {
   useEffect(() => {
     return () => {
       for (const w of codexWorkersRef.current) {
+        workerExitUnlistenersRef.current.get(w.ptyId)?.()
         void killPty(w.ptyId).catch(() => {})
       }
+      workerExitUnlistenersRef.current.clear()
     }
   }, [])
 
@@ -1044,8 +1055,10 @@ function AgentCanvasInner() {
     }
     // Mata os codex workers junto — são PTYs do Alethe, não do Claude.
     for (const w of codexWorkersRef.current) {
+      workerExitUnlistenersRef.current.get(w.ptyId)?.()
       void killPty(w.ptyId).catch(() => {})
     }
+    workerExitUnlistenersRef.current.clear()
     // Estado do canvas não sobrevive entre sessões — senão time/cards velhos
     // (até de testes headless) reaparecem na próxima pasta.
     clearStore()
@@ -1064,8 +1077,10 @@ function AgentCanvasInner() {
     // Mata os workers reais (PTYs claude/codex = processos pesados) — assim o
     // botão de limpar também é o "parar tudo / liberar RAM".
     for (const w of codexWorkersRef.current) {
+      workerExitUnlistenersRef.current.get(w.ptyId)?.()
       void killPty(w.ptyId).catch(() => {})
     }
+    workerExitUnlistenersRef.current.clear()
     setCodexWorkers([])
     setExpandedCodexId(null)
     clearStore()
