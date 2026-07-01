@@ -117,6 +117,9 @@ type ProjectsState = ProjectsFile & {
   createMarkdownPane: (projectId: string, args: { filePath: string; name?: string }) => Terminal
   renameTerminal: (projectId: string, terminalId: string, name: string) => void
   deleteTerminal: (projectId: string, terminalId: string) => void
+  /** Mata a árvore de processos do terminal + fecha o pane, mas MANTÉM o atalho na
+   *  sidebar (descarta sessão/scrollback). O atalho reabre do zero ao ser clicado. */
+  killTerminal: (projectId: string, terminalId: string) => void
   moveTerminal: (
     fromProjectId: string,
     terminalId: string,
@@ -302,6 +305,22 @@ function clearTerminalPtyIds(terminal: Terminal): Terminal {
   return {
     ...terminal,
     tabs: terminal.tabs.map((tab) => (tab.ptyId ? { ...tab, ptyId: null } : tab)),
+  }
+}
+
+/** Como clearTerminalPtyIds, mas também DESCARTA a sessão do agente (sessionId) e o
+ *  badge de conclusão. Usado pelo "kill": mata o processo e reinicia do zero na
+ *  próxima abertura, ao contrário do "disable" (olhinho), que preserva sessionId. */
+function resetTerminalRuntime(terminal: Terminal): Terminal {
+  if (terminal.tabs.length === 0) return terminal
+  return {
+    ...terminal,
+    tabs: terminal.tabs.map((tab) => ({
+      ...tab,
+      ptyId: null,
+      sessionId: undefined,
+      completionUnread: false,
+    })),
   }
 }
 
@@ -1931,6 +1950,44 @@ export const useProjectsStore = create<ProjectsState>((set, get) => {
                 : state.workspace.focusedTerminalId,
             history,
             historyIndex: Math.min(state.workspace.historyIndex, history.length - 1),
+          },
+        }
+      }),
+
+    killTerminal: (projectId, terminalId) =>
+      update((state) => {
+        const terminal = state.projects
+          .find((p) => p.id === projectId)
+          ?.terminals.find((t) => t.id === terminalId)
+        if (terminal) cleanupPtys(collectTerminalPtyIds([terminal]))
+        // Mantém o terminal em project.terminals (é um atalho permanente); só
+        // reseta o runtime (ptyId + sessionId + badge) e fecha o pane.
+        const projects = state.projects.map((p) =>
+          p.id === projectId
+            ? {
+                ...p,
+                terminals: p.terminals.map((t) =>
+                  t.id === terminalId ? resetTerminalRuntime(t) : t,
+                ),
+              }
+            : p,
+        )
+        const containers = state.workspace.containers
+          .map((c) =>
+            c.projectId === projectId
+              ? { ...c, paneIds: c.paneIds.filter((id) => id !== terminalId) }
+              : c,
+          )
+          .filter((c) => c.paneIds.length > 0)
+        return {
+          projects,
+          workspace: {
+            ...state.workspace,
+            containers,
+            focusedTerminalId:
+              state.workspace.focusedTerminalId === terminalId
+                ? null
+                : state.workspace.focusedTerminalId,
           },
         }
       }),

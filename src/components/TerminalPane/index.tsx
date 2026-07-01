@@ -11,8 +11,8 @@ import {
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
+  Power,
   RefreshCw,
-  Trash2,
   X,
 } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
@@ -83,7 +83,7 @@ export const TerminalPane = memo(function TerminalPane({
   const closeSubTab = useProjectsStore((s) => s.closeSubTab)
   const setLaneVisible = useProjectsStore((s) => s.setLaneVisible)
   const setTerminalDisabled = useProjectsStore((s) => s.setTerminalDisabled)
-  const deleteTerminal = useProjectsStore((s) => s.deleteTerminal)
+  const killTerminal = useProjectsStore((s) => s.killTerminal)
   const setSubTabPtyId = useProjectsStore((s) => s.setSubTabPtyId)
   const setSubTabSessionId = useProjectsStore((s) => s.setSubTabSessionId)
   const setSubTabCompletionUnread = useProjectsStore((s) => s.setSubTabCompletionUnread)
@@ -155,11 +155,12 @@ export const TerminalPane = memo(function TerminalPane({
 
   const onDisable = () => setTerminalDisabled(projectId, terminal.id, !terminal.disabled)
 
-  const onDelete = () => {
-    if (window.confirm(t('ui.sidebar.confirmDeleteTerminal', { name: terminal.name }))) {
-      deleteTerminal(projectId, terminal.id)
-      if (isFocusMode) setFocusedTerminal(null)
-    }
+  // Kill = mata a árvore de processos e fecha o pane, mas MANTÉM o atalho na
+  // sidebar (é um atalho pra reabrir rápido). Excluir de vez fica no menu de
+  // contexto da sidebar. Sem confirmação: reabrir restaura o atalho.
+  const onKill = () => {
+    killTerminal(projectId, terminal.id)
+    if (isFocusMode) setFocusedTerminal(null)
   }
 
   const cwd = activeTab?.cwd?.trim() || terminal.cwd?.trim() || ''
@@ -292,11 +293,11 @@ export const TerminalPane = memo(function TerminalPane({
                 <button
                   type="button"
                   className={`${styles.action} ${styles.danger}`}
-                  onClick={onDelete}
-                  title={t('ui.sidebar.deleteTerminal')}
-                  aria-label={t('ui.sidebar.deleteTerminal')}
+                  onClick={onKill}
+                  title={t('ui.terminal.killKeepsShortcut')}
+                  aria-label={t('ui.terminal.kill')}
                 >
-                  <Trash2 size={12} />
+                  <Power size={12} />
                 </button>
                 <div className={styles.actionsDivider} aria-hidden />
               </>

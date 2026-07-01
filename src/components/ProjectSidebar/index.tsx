@@ -83,6 +83,7 @@ export function ProjectSidebar() {
     resumeGroup: s.resumeGroup,
     setProjectDisabled: s.setProjectDisabled,
     renameTerminal: s.renameTerminal,
+    killTerminal: s.killTerminal,
     deleteTerminal: s.deleteTerminal,
     setTerminalDisabled: s.setTerminalDisabled,
     moveTerminal: s.moveTerminal,
@@ -467,6 +468,11 @@ export function ProjectSidebar() {
         kind: 'item',
         label: term.disabled ? t('ui.sidebar.reactivate') : t('ui.sidebar.disable'),
         onClick: () => actions.setTerminalDisabled(projectId, term.id, !term.disabled),
+      },
+      {
+        kind: 'item',
+        label: t('ui.sidebar.killTerminal'),
+        onClick: () => actions.killTerminal(projectId, term.id),
       },
       { kind: 'separator' },
       {
