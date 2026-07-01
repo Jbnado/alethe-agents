@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "node --test --experimental-strip-types \"tests/**/*.test.ts\"",
     "tauri": "tauri",
-    "app": "tauri dev"
+    "app": "tauri dev",
+    "release": "node scripts/release.mjs",
+    "release:publish": "node scripts/release-publish.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

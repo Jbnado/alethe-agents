@@ -1,10 +1,10 @@
 name: Release
 
 on:
+  # Tag NÃO dispara release. `npm run release` só marca a versão no git;
+  # publicar instaladores é uma ação deliberada via `npm run release:publish`
+  # (gh workflow run) ou pela aba Actions -> Release -> Run workflow.
   workflow_dispatch:
-  push:
-    tags:
-      - 'v*'
 
 jobs:
   build:
