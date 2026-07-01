@@ -16,6 +16,8 @@
     "core:window:allow-set-title",
     "core:webview:allow-set-webview-zoom",
     "dialog:default",
-    "notification:default"
+    "notification:default",
+    "updater:default",
+    "process:allow-restart"
   ]
 }

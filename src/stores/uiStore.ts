@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ClaudeUsage, CodexUsage, MemoryStats } from '../lib/tauri'
 import type { AgentType } from '../lib/types'
+import type { UpdateInfo } from '../lib/updater'
 
 /**
  * Estado de UI ephemeral — modais abertos, query do find/jump, drag em
@@ -26,6 +27,7 @@ type ModalKind =
   | 'profiles'
   | 'sync'
   | 'topbarSettings'
+  | 'updateAvailable'
   | null
 
 export type ActiveView = 'home' | 'workspace' | 'agentCanvas'
@@ -72,6 +74,8 @@ type UiState = {
   toasts: InAppToast[]
   /** Histórico recente de notificações (não some com o banner) — usado na Home. */
   notifications: InAppToast[]
+  /** Update disponível (checado em silêncio no boot). null = atualizado/sem info. */
+  updateInfo: UpdateInfo | null
 
   openModal_: (kind: Exclude<ModalKind, null>, context?: Record<string, unknown>) => void
   closeModal: () => void
@@ -98,6 +102,7 @@ type UiState = {
   }) => void
   dismissToast: (id: string) => void
   clearNotifications: () => void
+  setUpdateInfo: (info: UpdateInfo | null) => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -118,6 +123,7 @@ export const useUiStore = create<UiState>((set) => ({
   agentCanvasBudgetUsd: null,
   toasts: [],
   notifications: [],
+  updateInfo: null,
 
   openModal_: (kind, context) => set({ openModal: kind, modalContext: context ?? null }),
   closeModal: () => set({ openModal: null, modalContext: null }),
@@ -159,4 +165,5 @@ export const useUiStore = create<UiState>((set) => ({
   dismissToast: (id) =>
     set((s) => ({ toasts: s.toasts.filter((toast) => toast.id !== id) })),
   clearNotifications: () => set({ notifications: [] }),
+  setUpdateInfo: (info) => set({ updateInfo: info }),
 }))

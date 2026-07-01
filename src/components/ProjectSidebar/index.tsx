@@ -43,6 +43,7 @@ import { AgentIcon } from '../icons/AgentIcons'
 import { SidebarNowPlaying } from '../SidebarNowPlaying'
 import { UserProfile } from '../UserProfile'
 import { ContextMenu, type MenuItem } from './ContextMenu'
+import { SidebarUpdate } from './SidebarUpdate'
 import styles from './ProjectSidebar.module.css'
 
 const LAYOUTS: { id: LayoutMode; label: string; Icon: LucideIcon }[] = [
@@ -758,6 +759,7 @@ export function ProjectSidebar() {
       <WorkspaceLayoutFooter />
       <LayoutFooter />
       <SidebarNowPlaying />
+      <SidebarUpdate />
       <UserProfile />
     </aside>
   )

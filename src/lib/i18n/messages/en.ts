@@ -760,6 +760,16 @@ export const en = {
   'crash.uncleanTitle': 'Alethe closed unexpectedly',
   'crash.uncleanBody': 'Last reading before it died: {total} MB · {procs} processes · {time}',
 
+  /* ---- app update ---- */
+  'update.chipLabel': 'Update available',
+  'update.chipTitle': 'Version {version} available — click to update',
+  'update.availableTitle': 'Update available — {version}',
+  'update.body': "You're on {current}. Version {version} is ready to install.",
+  'update.installNow': 'Update & restart',
+  'update.installing': 'Downloading… {percent}%',
+  'update.later': 'Later',
+  'update.error': 'Update failed: {error}',
+
   /* ---- data sync ---- */
   'sync.title': 'Sync your data',
   'sync.subtitle': 'Back up and restore your projects, layout and time stats.',

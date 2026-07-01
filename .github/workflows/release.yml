@@ -63,6 +63,11 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Assinatura do updater (minisign). Sem estes secrets o build FALHA,
+          # porque bundle.createUpdaterArtifacts está ligado. Gere o par com
+          # `npm run tauri signer generate` e cadastre nos secrets do repo.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__
           releaseName: 'Alethe v__VERSION__'

@@ -760,6 +760,16 @@ export const ptBR: Record<MessageKey, string> = {
   'crash.uncleanTitle': 'O Alethe fechou sozinho',
   'crash.uncleanBody': 'Última leitura antes de cair: {total} MB · {procs} processos · {time}',
 
+  /* ---- app update ---- */
+  'update.chipLabel': 'Atualização disponível',
+  'update.chipTitle': 'Versão {version} disponível — clique para atualizar',
+  'update.availableTitle': 'Atualização disponível — {version}',
+  'update.body': 'Você está na {current}. A versão {version} está pronta para instalar.',
+  'update.installNow': 'Atualizar e reiniciar',
+  'update.installing': 'Baixando… {percent}%',
+  'update.later': 'Depois',
+  'update.error': 'Falha ao atualizar: {error}',
+
   /* ---- data sync ---- */
   'sync.title': 'Sincronizar seus dados',
   'sync.subtitle': 'Faça backup e restaure seus projetos, layout e estatísticas de tempo.',
