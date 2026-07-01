@@ -16,6 +16,8 @@ const AGENTS: { type: AgentType; label: string }[] = [
   { type: 'claude', label: 'Claude' },
   { type: 'codex', label: 'Codex' },
   { type: 'opencode', label: 'OpenCode' },
+  { type: 'freebuff', label: 'Freebuff' },
+  { type: 'mimo', label: 'Mimo' },
 ]
 
 export function NewSubTabModal() {
@@ -43,6 +45,8 @@ export function NewSubTabModal() {
     claude: false,
     codex: false,
     opencode: false,
+    freebuff: false,
+    mimo: false,
   })
 
   const visibleAgents = AGENTS.filter((a) => enabled[a.type])
@@ -59,7 +63,7 @@ export function NewSubTabModal() {
   const reset = () => {
     setType('shell')
     setCwd('')
-    setUnrestricted({ shell: false, claude: false, codex: false, opencode: false })
+    setUnrestricted({ shell: false, claude: false, codex: false, opencode: false, freebuff: false, mimo: false })
   }
 
   const submit = () => {

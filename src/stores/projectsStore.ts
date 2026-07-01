@@ -359,6 +359,9 @@ function normalizePreferences(raw: Partial<Preferences> | undefined): Preference
     Boolean(raw?.onboardingDone && raw?.displayName && raw.displayName.trim().length > 0)
   return {
     ...preferences,
+    // Backfill: instalações antigas não têm os agentes novos em enabledAgents;
+    // preserva os toggles do usuário e habilita os que faltam pelo default.
+    enabledAgents: { ...DEFAULT_PREFERENCES.enabledAgents, ...preferences.enabledAgents },
     language: preferences.language === 'pt-BR' ? 'pt-BR' : 'en',
     accountCreated: legacyAccountCreated,
     displayName: preferences.displayName.trim(),

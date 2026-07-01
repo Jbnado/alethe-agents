@@ -32,6 +32,8 @@ const NOTIF_AGENT_CLASS: Record<AgentType, string> = {
   codex: styles.notifCodex,
   shell: styles.notifShell,
   opencode: styles.notifOpencode,
+  freebuff: styles.notifFreebuff,
+  mimo: styles.notifMimo,
 }
 
 export function HomeView() {

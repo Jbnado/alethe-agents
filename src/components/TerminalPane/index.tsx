@@ -23,7 +23,7 @@ import { buildAgentLaunch } from '../../lib/sessionLaunch'
 import { useProjectsStore } from '../../stores/projectsStore'
 import { useTerminalsStore } from '../../stores/terminalsStore'
 import { useUiStore } from '../../stores/uiStore'
-import type { Terminal as TerminalEntry, SubTab, Theme } from '../../lib/types'
+import type { Terminal as TerminalEntry, SubTab, Theme, AgentType } from '../../lib/types'
 import { getPtyCwd, openInFileExplorer, openInVscode, restartPty } from '../../lib/tauri'
 import { AgentIcon, VSCodeIcon } from '../icons/AgentIcons'
 import { ClaudeHistoryModal } from '../modals/ClaudeHistoryModal'
@@ -461,7 +461,7 @@ function DisabledOverlay({
 }: {
   terminalName: string
   cwd: string
-  agentType: 'shell' | 'claude' | 'codex' | 'opencode'
+  agentType: AgentType
   terminalTheme: Theme
   onReactivate: () => void
 }) {

@@ -69,6 +69,8 @@ export const en = {
   'agent.claude.desc': 'Anthropic CLI',
   'agent.codex.desc': 'OpenAI CLI',
   'agent.opencode.desc': 'Open source',
+  'agent.freebuff.desc': 'Free coding agent',
+  'agent.mimo.desc': 'Xiaomi CLI',
 
   /* ---- image input ---- */
   'image.placeholder': 'https://example.com/icon.png',

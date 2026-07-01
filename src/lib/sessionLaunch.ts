@@ -76,10 +76,17 @@ export function buildAgentLaunch(
     }
   }
 
-  const clean = stripOpenCodeSessionArgs([...baseArgs])
-  return {
-    args: sessionId ? ['--session', sessionId, ...clean] : clean,
-    sessionId,
-    createdSession: false,
+  if (agent === 'opencode') {
+    const clean = stripOpenCodeSessionArgs([...baseArgs])
+    return {
+      args: sessionId ? ['--session', sessionId, ...clean] : clean,
+      sessionId,
+      createdSession: false,
+    }
   }
+
+  // freebuff/mimo (e qualquer agente sem sintaxe própria de resume): só executa o
+  // binário com os args base. freebuff não documenta flag de resume; o Mimo Code
+  // retoma a sessão automaticamente via memória persistente, sem flag.
+  return { args: [...baseArgs], sessionId: undefined, createdSession: false }
 }

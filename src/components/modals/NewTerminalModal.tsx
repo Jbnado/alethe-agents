@@ -16,6 +16,8 @@ const AGENTS: { type: AgentType; label: string }[] = [
   { type: 'claude', label: 'Claude' },
   { type: 'codex', label: 'Codex' },
   { type: 'opencode', label: 'OpenCode' },
+  { type: 'freebuff', label: 'Freebuff' },
+  { type: 'mimo', label: 'Mimo' },
 ]
 
 export function NewTerminalModal() {
@@ -41,6 +43,8 @@ export function NewTerminalModal() {
     claude: false,
     codex: false,
     opencode: false,
+    freebuff: false,
+    mimo: false,
   })
 
   const visibleAgents = AGENTS.filter((a) => enabled[a.type])
@@ -55,7 +59,7 @@ export function NewTerminalModal() {
     setName('')
     setType('shell')
     setCwd('')
-    setUnrestricted({ shell: false, claude: false, codex: false, opencode: false })
+    setUnrestricted({ shell: false, claude: false, codex: false, opencode: false, freebuff: false, mimo: false })
   }
 
   const submit = () => {

@@ -53,6 +53,8 @@ const AGENTS: { id: AgentType; label: string }[] = [
   { id: 'claude', label: 'Claude Code' },
   { id: 'codex', label: 'Codex' },
   { id: 'opencode', label: 'OpenCode' },
+  { id: 'freebuff', label: 'Freebuff' },
+  { id: 'mimo', label: 'Mimo Code' },
 ]
 
 export function PreferencesModal() {

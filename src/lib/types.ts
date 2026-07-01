@@ -1,4 +1,4 @@
-export type AgentType = 'shell' | 'claude' | 'codex' | 'opencode'
+export type AgentType = 'shell' | 'claude' | 'codex' | 'opencode' | 'freebuff' | 'mimo'
 
 /** Idiomas suportados pela UI. `en` é o default. */
 export type Locale = 'en' | 'pt-BR'
@@ -59,6 +59,9 @@ export const UNRESTRICTED_FLAG: Record<AgentType, string | null> = {
   claude: '--dangerously-skip-permissions',
   codex: '--dangerously-bypass-approvals-and-sandbox',
   opencode: '--dangerously-skip-permissions',
+  // freebuff/mimo não documentam flag de skip-permissions própria.
+  freebuff: null,
+  mimo: null,
 }
 
 /** Tipo de pane. Ausente = 'terminal' (back-compat, sem migração). */
@@ -243,7 +246,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   uiTheme: 'dark',
   uiZoom: 1,
   terminalTheme: null,
-  enabledAgents: { shell: true, claude: true, codex: true, opencode: true },
+  enabledAgents: { shell: true, claude: true, codex: true, opencode: true, freebuff: true, mimo: true },
   onboardingDone: false,
   workspaceFlat: false,
   fullscreenContainerId: null,
