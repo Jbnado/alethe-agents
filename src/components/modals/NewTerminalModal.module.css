@@ -155,6 +155,33 @@
   color: var(--status-waiting);
 }
 
+/* Same shape as the unrestricted toggle, different meaning: capability, not
+   risk. Accent instead of the warning color the unrestricted toggle uses. */
+.orchestratorToggle {
+  margin-top: 8px;
+}
+
+.orchestratorToggleActive {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, var(--bg-sunken));
+}
+
+.orchestratorToggleActive .permissionToggleIcon,
+.orchestratorToggleActive .permissionToggleState {
+  color: var(--accent);
+}
+
+.orchestratorNote {
+  margin: 7px 0 0;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
 .alwaysUnrestricted {
   display: inline-flex;
   align-items: center;

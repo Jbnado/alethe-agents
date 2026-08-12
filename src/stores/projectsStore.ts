@@ -54,6 +54,7 @@ import { createWorkspaceSlice } from './projectsStore.workspaceSlices'
 export { getProjectDefaultCwd, getProjectRepoRoot }
 export {
   MAX_RECENT_PROJECT_TABS,
+  ORCHESTRATOR_LIVE_AGENT_LIMITS,
   SPAWN_CONCURRENCY_LIMITS,
   UI_ZOOM_LIMITS,
 } from './projectsStore.constants'
@@ -192,9 +193,17 @@ export type ProjectsState = ProjectsFile & {
         extraArgs?: string[]
         initialInput?: string
         runtimeProfile?: AgentRuntimeProfile
+        orchestrator?: boolean
       }
       worktreeAgentId?: string
       gsdSyncViewer?: boolean
+      /**
+       * Keeps `project.defaultCwd` as it is. Set by callers that are not the
+       * user choosing a folder — an orchestrating agent opening a shell must
+       * not repoint the project's default folder. See
+       * `shouldAdoptProjectDefaultCwd`.
+       */
+      suppressDefaultCwd?: boolean
     },
   ) => Terminal
   /**
@@ -214,7 +223,10 @@ export type ProjectsState = ProjectsFile & {
         extraArgs?: string[]
         initialInput?: string
         runtimeProfile?: AgentRuntimeProfile
+        orchestrator?: boolean
       }
+      /** Same meaning as in `createTerminal`; forwarded untouched. */
+      suppressDefaultCwd?: boolean
     },
   ) => Promise<Terminal>
   /** Cria um pane viewer (markdown/arquivo) e adiciona ao grid do projeto. */
@@ -280,6 +292,13 @@ export type ProjectsState = ProjectsFile & {
       cwd: string
       name?: string
       extraArgs?: string[]
+      /**
+       * Typed into the PTY once it settles, exactly like `createTerminal`'s
+       * `firstTab.initialInput`. This is the only way to hand a command to a
+       * sub-tab — `extraArgs` becomes argv of `spawn_pty` and must never carry
+       * caller-supplied text.
+       */
+      initialInput?: string
       runtimeProfile?: AgentRuntimeProfile
     },
   ) => SubTab

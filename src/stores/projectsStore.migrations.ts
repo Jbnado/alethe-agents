@@ -27,9 +27,11 @@ import {
   sanitizeWorkspaceSnapshot,
 } from '../lib/workspaceNavigation'
 import {
+  clampOrchestratorMaxLiveAgents,
   clampSpawnConcurrency,
   clampUiZoom,
   MAX_RECENT_PROJECT_TABS,
+  normalizeOrchestratorAutoApprove,
 } from './projectsStore.constants'
 
 type LegacyPreferences = Partial<Preferences> & { showGitControl?: boolean }
@@ -84,6 +86,9 @@ export function normalizePreferences(raw: LegacyPreferences | undefined): Prefer
     spotifyClientSecret: preferences.spotifyClientSecret.trim(),
     uiZoom: clampUiZoom(preferences.uiZoom),
     spawnConcurrency: clampSpawnConcurrency(preferences.spawnConcurrency),
+    orchestratorMaxLiveAgents: clampOrchestratorMaxLiveAgents(preferences.orchestratorMaxLiveAgents),
+    // Backfill: an install that predates the field gets every action asking.
+    orchestratorAutoApprove: normalizeOrchestratorAutoApprove(raw?.orchestratorAutoApprove),
     resourcePolicy: {
       // Older installs inherited Smart LRU without an explicit choice. Migrate
       // them to monitor-only so an update never starts terminating PTYs.

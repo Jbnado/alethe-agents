@@ -68,9 +68,14 @@ export function preparePtyRuntimeLaunch(
     if (profile === 'diagnostic') addArg(args, '--safe-mode')
   }
 
-  if (agent === 'codex') {
+  // `args[0] === 'exec'` is the one-shot form: run the task from argv and exit.
+  if (agent === 'codex' && args[0] !== 'exec') {
     // Evita o buffer alternativo pesado e mantém o histórico no host. O Codex
     // ainda não oferece um safe-mode genérico equivalente ao do Claude.
+    //
+    // Interactive TUI only. `codex exec` rejects it outright ("unexpected
+    // argument '--no-alt-screen'") and exits before printing anything, which
+    // reads as a spawned agent that never opened at all.
     addArg(args, '--no-alt-screen')
   }
 

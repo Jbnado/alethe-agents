@@ -39,11 +39,13 @@ import { TopbarSettingsModal } from './components/modals/TopbarSettingsModal'
 import { UpdateModal } from './components/modals/UpdateModal'
 import { WhatsNewModal } from './components/modals/WhatsNewModal'
 import { RemoteControlModal } from './components/modals/RemoteControlModal'
+import { OrchestratorApprovalModal } from './components/modals/OrchestratorApprovalModal'
 import { WelcomeModal } from './components/modals/WelcomeModal'
 import { useKeybindings } from './hooks/useKeybindings'
 import { useDiscordPresence } from './hooks/useDiscordPresence'
 import { useCliOpenRequests } from './hooks/useCliOpenRequests'
 import { useCloseConfirmation } from './hooks/useCloseConfirmation'
+import { useControlBridge } from './hooks/useControlBridge'
 import { useResourceSupervisor } from './hooks/useResourceSupervisor'
 import { startActivityTracker } from './lib/activityTracker'
 import { intlLocale, translate, useT } from './lib/i18n'
@@ -201,6 +203,7 @@ export default function App() {
   useCloseConfirmation()
   useResourceSupervisor(hydrated)
   useCliOpenRequests(hydrated)
+  useControlBridge(hydrated)
 
   useEffect(() => {
     void hydrate()
@@ -495,6 +498,7 @@ export default function App() {
         <UpdateModal />
         <WhatsNewModal />
         <RemoteControlModal />
+        <OrchestratorApprovalModal />
       </ErrorBoundary>
       <InAppNotifications />
       {activeView === 'agentCanvas' ? <TokenHud /> : null}

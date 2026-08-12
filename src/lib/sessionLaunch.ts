@@ -61,6 +61,11 @@ export function buildAgentLaunch(
   // AMBIENTE no próprio projeto (`.codex/config.toml` / `opencode.json`), escrito
   // ANTES do spawn (XTermView), não por flag aqui. Arquitetura correta dos 3 CLIs.
   mcpConfigPaths?: readonly string[],
+  // Global CLI flags that must come BEFORE any subcommand. Only Codex needs
+  // them: it has no `--mcp-config` equivalent, so the Alethe MCP server is
+  // registered through `-c` overrides (see `orchestrator_config.rs`), and `-c`
+  // belongs to the root command — placing it after `resume` would not parse.
+  leadingArgs?: readonly string[],
 ): AgentLaunch {
   if (agent === 'shell') {
     return { args: [...baseArgs], sessionId: undefined, createdSession: false }
@@ -86,8 +91,9 @@ export function buildAgentLaunch(
 
   if (agent === 'codex') {
     const clean = stripCodexSessionArgs([...baseArgs])
+    const leading = [...(leadingArgs ?? [])]
     return {
-      args: sessionId ? ['resume', sessionId, ...clean] : clean,
+      args: sessionId ? [...leading, 'resume', sessionId, ...clean] : [...leading, ...clean],
       sessionId,
       createdSession: false,
     }

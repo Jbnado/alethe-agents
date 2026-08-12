@@ -26,15 +26,20 @@ const PLUGIN_SOURCE: &str = r#"// Gerado automaticamente pelo Alethe - nao edita
 // no spawn de cada terminal opencode). Best-effort: nunca deve travar nem
 // quebrar a sessao do OpenCode se o Alethe nao estiver rodando ou a porta tiver
 // mudado.
+//
+// The listener rejects every request without the X-Alethe-Token header, so the
+// token comes in alongside the endpoint (ALETHE_BRIDGE_TOKEN); without both,
+// reporting would only earn a 401 and the plugin stays inert.
 export const AletheBridgePlugin = async ({ directory }) => {
   const endpoint = process.env.ALETHE_BRIDGE_ENDPOINT
-  if (!endpoint) return {}
+  const token = process.env.ALETHE_BRIDGE_TOKEN
+  if (!endpoint || !token) return {}
 
   const report = async (state) => {
     try {
       await fetch(`${endpoint}/opencode-status`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "X-Alethe-Token": token },
         body: JSON.stringify({ directory, state }),
       })
     } catch {
@@ -101,5 +106,13 @@ mod tests {
         assert!(PLUGIN_SOURCE.contains("tool.execute.before"));
         assert!(PLUGIN_SOURCE.contains("ALETHE_BRIDGE_ENDPOINT"));
         assert!(PLUGIN_SOURCE.contains("/opencode-status"));
+    }
+
+    /// The listener 401s anything without the token, so reporting is pointless
+    /// unless the plugin reads it and sends it as X-Alethe-Token.
+    #[test]
+    fn plugin_source_authenticates_against_the_hooks_listener() {
+        assert!(PLUGIN_SOURCE.contains("ALETHE_BRIDGE_TOKEN"));
+        assert!(PLUGIN_SOURCE.contains("\"X-Alethe-Token\": token"));
     }
 }

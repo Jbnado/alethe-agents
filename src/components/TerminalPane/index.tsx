@@ -131,6 +131,13 @@ export const TerminalPane = memo(function TerminalPane({
     return terminal.cwd || p.terminals[0]?.cwd || null
   })
 
+  // Control-plane scope of this pane: an agent may reach terminals in its own
+  // project or in a sibling project of the same group (see `isInScope`), so the
+  // group has to travel with the token minted at spawn.
+  const projectGroupId = useProjectsStore(
+    (s) => s.projects.find((p) => p.id === projectId)?.groupId ?? null,
+  )
+
   // Gate de Conclusão de Planejamento GSD: projeto com o monitoramento
   // ligado ganha o plugin OpenCode que mantém .planning/ sincronizado
   // sozinho (ver XTermView, gatilho condicionado a command === 'opencode').
@@ -434,6 +441,9 @@ export const TerminalPane = memo(function TerminalPane({
                   initialInput={activeTab.initialInput}
                   runtimeProfile={activeTab.runtimeProfile}
                   sessionId={activeTab.sessionId}
+                  terminalId={terminal.id}
+                  groupId={projectGroupId}
+                  orchestrator={activeTab.orchestrator}
                   graphifyRepo={graphifyRepo}
                   gsdWatcherEnabled={gsdWatcherEnabled}
                   trustSessionId={terminal.gsdSyncViewer}

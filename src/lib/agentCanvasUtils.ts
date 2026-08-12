@@ -85,38 +85,6 @@ export function durationLabel(node: { startedAt: number; endedAt: number | null 
   return s >= 60 ? `${Math.floor(s / 60)}m${s % 60}s` : `${s}s`
 }
 
-/** Strip terminal control sequences and return the tail of a worker's output. */
-export function tailSummary(raw: string, max = 320): string {
-  const clean = raw
-    // CSI: ESC [ ... letra final
-    .replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')
-    // OSC: ESC ] ... (BEL ou ESC backslash)
-    .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')
-    // outros escapes ESC de 1 char
-    .replace(/\x1b[@-Z\\-_]/g, '')
-    // bytes de controle restantes (preserva \n e \t)
-    .replace(/[\x00-\x08\x0b-\x1f\x7f]/g, '')
-    .replace(/[^\S\n]+/g, ' ')
-    .replace(/\n{2,}/g, '\n')
-    .trim()
-  return clean.length > max ? `…${clean.slice(-max)}` : clean
-}
-
-/** Monta os extraArgs one-shot por agente pra rodar uma task sem depender da TUI. */
-export function execArgsFor(agent: AgentType, task: string): string[] | undefined {
-  switch (agent) {
-    case 'codex':
-      return ['exec', '--skip-git-repo-check', task]
-    case 'claude':
-      // headless: -p roda a task e sai; sem permissões pra não travar no prompt.
-      return ['-p', task, '--dangerously-skip-permissions']
-    case 'opencode':
-      return ['run', task]
-    default:
-      return undefined
-  }
-}
-
 /** Classe de status do badge de um nó (tokens do tema). */
 export function statusBadgeClass(status: AgentNode['status'], styles: CanvasStyleMap): string {
   if (status === 'running') return styles.statusRunning

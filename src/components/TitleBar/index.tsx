@@ -13,6 +13,7 @@ import {
   Pin,
   RefreshCw,
   Newspaper,
+  ShieldQuestion,
   Smartphone,
   Users,
   Workflow,
@@ -30,6 +31,10 @@ import { requestAppClose } from '../../hooks/useCloseConfirmation'
 import { observeClaudeReset, observeCodexReset } from '../../lib/limitResetWatch'
 import { useT } from '../../lib/i18n'
 import { killPty, remoteControlInfo } from '../../lib/tauri'
+import {
+  selectPendingApprovalCount,
+  useOrchestratorStore,
+} from '../../stores/orchestratorStore'
 import { useProjectsStore } from '../../stores/projectsStore'
 import { useUiStore } from '../../stores/uiStore'
 import styles from './TitleBar.module.css'
@@ -85,6 +90,34 @@ function MemoryPillButton({ ramMb }: { ramMb: number }) {
       onClick={() => openModal('memoryAnalytics')}
     >
       {ramMb.toFixed(0)} MB
+    </button>
+  )
+}
+
+/**
+ * Control-plane writes waiting for an answer.
+ *
+ * Not a widget and not configurable: it only exists while something is parked,
+ * and it is the way back to a decision whose dialog lost the modal slot to
+ * something the person opened afterwards. Each one refuses itself after two
+ * minutes, so a count sitting here is an agent about to be told no.
+ */
+function PendingApprovalsPill() {
+  const t = useT()
+  const pending = useOrchestratorStore(selectPendingApprovalCount)
+  const openModal = useUiStore((s) => s.openModal_)
+  if (pending === 0) return null
+  const label = t('orchApproval.pending', { count: pending })
+  return (
+    <button
+      type="button"
+      className={styles.approvalPill}
+      title={label}
+      aria-label={label}
+      onClick={() => openModal('orchestratorApproval')}
+    >
+      <ShieldQuestion size={12} />
+      {pending}
     </button>
   )
 }
@@ -709,6 +742,7 @@ export function TitleBar() {
                 </div>
               </div>
             ) : null}
+            <PendingApprovalsPill />
             {preferences.topbarShowMemory && ramMb !== null ? (
               <MemoryPillButton ramMb={ramMb} />
             ) : null}

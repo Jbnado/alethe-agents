@@ -33,6 +33,15 @@ export type XTermViewProps = {
   sessionKey?: string
   /** Env extra só deste PTY. */
   env?: Record<string, string>
+  /**
+   * Control-plane identity of this pane: the pane id (the unit the control
+   * plane addresses) and the group its project belongs to. Absent means the
+   * terminal is minted no control token.
+   */
+  terminalId?: string
+  groupId?: string | null
+  /** Sub-tab marked as an orchestrator: gets Alethe's own MCP server injected. */
+  orchestrator?: boolean
   /** RFC-004 — raiz do repo quando o projeto tem Graphify habilitado. Presente:
    * o spawn injeta o MCP do grafo (Claude via `--mcp-config`, Codex/OpenCode via
    * merge no config do projeto) e garante o bootstrap do grafo. */
@@ -78,6 +87,9 @@ export function XTermView({
   sessionId,
   sessionKey,
   env,
+  terminalId,
+  groupId,
+  orchestrator,
   graphifyRepo,
   gsdWatcherEnabled,
   trustSessionId,
@@ -301,6 +313,10 @@ export function XTermView({
     initialInput,
     sessionId,
     env,
+    terminalId,
+    projectId,
+    groupId,
+    orchestrator,
     graphifyRepo,
     gsdWatcherEnabled,
     trustSessionId,

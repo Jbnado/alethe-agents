@@ -391,12 +391,67 @@ export const ptBR: Record<MessageKey, string> = {
     'Runtimes visíveis, focados, recém-abertos ou trabalhando são sempre protegidos. Agentes estacionados retomam pela sessão salva.',
   'prefs.resourcePolicyManualHint':
     'O Alethe continua medindo e avisando, mas não estaciona runtimes nem pausa novos spawns automaticamente.',
+  'prefs.resourceDerivedHint':
+    'Aviso e recuperação acompanham o limite rígido (80% e 75% dele) e são recalculados sempre que você o altera. Edite qualquer um dos dois pra sobrescrever o valor derivado.',
+  'prefs.resourceBudgetMax': 'Teto do limite: {max} MB — metade dos {total} GB desta máquina.',
+  'prefs.resourceBudgetMaxUnknown': 'Teto do limite: {max} MB.',
+  'prefs.resourceBudgetConfirmTitle': 'Aumentar o limite de memória?',
+  'prefs.resourceBudgetConfirmBody':
+    'Um limite de {budget} GB é cerca de {percent}% dos {total} GB de RAM desta máquina.',
+  'prefs.resourceBudgetConfirmBodyUnknown':
+    'Um limite de {budget} GB está bem acima dos 4 GB que o Alethe considera seguro por padrão.',
+  'prefs.resourceBudgetConfirmDetail':
+    'Os terminais podem crescer até esse ponto antes de qualquer coisa ser estacionada — deixe espaço pro Windows e pra tudo que você usa junto com o Alethe.',
+  'prefs.resourceBudgetConfirmApply': 'Usar {budget} GB',
   'prefs.spawnConcurrency': 'Spawns em paralelo',
   'prefs.spawnConcurrencyDesc':
     'Quantos terminais sobem de uma vez. Diminua se abrir grupos grandes travar o app; aumente pra subir mais rápido.',
   'prefs.spawnConcurrencyDecrease': 'Menos spawns em paralelo',
   'prefs.spawnConcurrencyIncrease': 'Mais spawns em paralelo',
   'prefs.spawnConcurrencyReset': 'Voltar ao padrão',
+  'prefs.orchestratorMaxLiveAgents': 'Agentes vivos que um orquestrador pode manter',
+  'prefs.orchestratorMaxLiveAgentsDesc':
+    'Quantos agentes podem estar rodando ao mesmo tempo antes de um terminal orquestrador ter um novo spawn recusado. O terminal que pede nunca conta contra o próprio teto: isso limita os agentes que um orquestrador cria, não o terminal que você abriu. Cada agente custa algumas centenas de MB, então é isso que impede um lead autônomo de spawnar até derrubar o app.',
+  'prefs.orchestratorMaxLiveAgentsDecrease': 'Permitir menos agentes vivos',
+  'prefs.orchestratorMaxLiveAgentsIncrease': 'Permitir mais agentes vivos',
+  'prefs.orchestratorMaxLiveAgentsReset': 'Voltar ao padrão',
+  'prefs.orchestratorAutoApprove': 'Executar sem me perguntar',
+  'prefs.orchestratorAutoApproveDesc':
+    'Um terminal de agente lê a workspace à vontade, mas tudo que a altera para e pergunta antes, mostrando exatamente o que ele quer fazer. Marque uma ação aqui para liberá-la daqui em diante, em qualquer terminal.',
+  'prefs.orchestratorAutoApproveHint':
+    'Tudo vem desligado. Ligue só o que você aprovaria toda vez de qualquer jeito — uma execução sem supervisão, por exemplo, em que não há ninguém na máquina para responder e cada pedido seria recusado depois de dois minutos.',
+
+  /* ---- Aprovação do control plane ---- */
+  'orchApproval.title': 'Um agente está pedindo para fazer algo',
+  'orchApproval.action.shell.run': 'Rodar um comando de shell',
+  'orchApproval.action.agent.spawn': 'Iniciar outro agente',
+  'orchApproval.action.agent.prompt': 'Enviar um prompt para um terminal',
+  'orchApproval.action.agent.kill': 'Parar um terminal',
+  'orchApproval.actionDesc.shell.run':
+    'Abre um shell de verdade nesta workspace e digita nele o comando abaixo.',
+  'orchApproval.actionDesc.agent.spawn':
+    'Cria um novo terminal de agente e entrega a ele a tarefa abaixo.',
+  'orchApproval.actionDesc.agent.prompt':
+    'Digita o texto abaixo em um terminal que já está rodando e o envia.',
+  'orchApproval.actionDesc.agent.kill':
+    'Encerra a árvore de processos de um terminal. O terminal e a worktree dele ficam; o que ele estava fazendo, não.',
+  'orchApproval.requester': 'Pedido por',
+  'orchApproval.project': 'Projeto',
+  'orchApproval.target': 'Alvo',
+  'orchApproval.agent': 'Agente',
+  'orchApproval.payload.shell.run': 'Comando',
+  'orchApproval.payload.agent.spawn': 'Tarefa',
+  'orchApproval.payload.agent.prompt': 'Prompt',
+  'orchApproval.payload.agent.kill': 'Terminal',
+  'orchApproval.remember': 'Sempre permitir isso vindo de “{terminal}”',
+  'orchApproval.rememberHint':
+    'Só nesta sessão, só neste terminal, só nesta ação. É esquecido quando o terminal fecha e nunca vai para o disco.',
+  'orchApproval.allow': 'Permitir',
+  'orchApproval.deny': 'Recusar',
+  'orchApproval.queued': 'mais {count} esperando',
+  'orchApproval.expiry':
+    'Sem resposta por {seconds} segundos, este pedido é recusado no seu lugar e o agente é avisado de que ninguém respondeu.',
+  'orchApproval.pending': '{count} esperando sua resposta',
   'prefs.gsdSyncModelsTitle': 'Cadeia de fallback de modelos do GSD Sync',
   'prefs.gsdSyncModelsDesc': 'Modelos reserva pra sessão-filha do GSD Sync, tentados em ordem se o modelo espelhado falhar.',
   'prefs.gsdSyncModelsHint': 'A sessão do GSD Sync sempre tenta primeiro, automaticamente, o mesmo modelo que a conversa principal acabou de usar. Esta lista é só a rede de segurança pro caso raro desse modelo também falhar (ex.: limite de uso) — cada um é tentado em ordem até funcionar.',
@@ -811,6 +866,11 @@ export const ptBR: Record<MessageKey, string> = {
   'term.unrestrictedOn': 'Ativado',
   'term.unrestrictedOff': 'Desativado',
   'term.alwaysUnrestricted': 'Sempre iniciar com o modo irrestrito',
+  'term.orchestrator': 'Orquestrador',
+  'term.orchestratorDescription':
+    'Conecta este agente às ferramentas do próprio Alethe: ele pode listar os terminais do projeto ou grupo dele, ler a saída deles e abrir shells e outros agentes.',
+  'term.orchestratorCodexNote':
+    'O Codex não consegue receber credenciais pelo arquivo de configuração, então este terminal inicia com --ignore-user-config: o seu ~/.codex/config.toml não é lido nesta sessão.',
   'term.runtimeProfile': 'Perfil do runtime',
   'term.runtimeProfile.full': 'Completo',
   'term.runtimeProfile.full.desc':

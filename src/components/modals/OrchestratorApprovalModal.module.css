@@ -1,0 +1,163 @@
+/* Confirmation for a control-plane write an agent terminal asked for. */
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.headIcon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  color: var(--accent);
+}
+
+.headIconDanger {
+  border-color: color-mix(in srgb, var(--status-offline) 40%, var(--border));
+  background: var(--status-offline-soft);
+  color: var(--status-offline);
+}
+
+.headCopy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.headCopy strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.headCopy span {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--fg-muted);
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  margin-bottom: 12px;
+}
+
+.metaLabel {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  align-self: center;
+}
+
+.metaValue {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payloadLabel {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+/*
+ * The literal payload. Scrolls instead of clipping: this is the text the
+ * decision is being made on, so every character has to be reachable.
+ */
+.payload {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.payload:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.remember {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  cursor: pointer;
+}
+
+.remember:hover {
+  border-color: var(--border-strong);
+}
+
+.remember input {
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  flex: none;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.rememberCopy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rememberCopy strong {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.rememberCopy span {
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--fg-muted);
+}
+
+.footnote {
+  margin: 10px 0 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--fg-muted);
+}
+
+.queued {
+  margin-right: auto;
+  align-self: center;
+  font-size: 11px;
+  color: var(--fg-muted);
+}

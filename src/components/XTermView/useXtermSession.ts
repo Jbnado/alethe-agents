@@ -11,7 +11,16 @@ import { recordAgentActivityInput } from '../../lib/activityTracker'
 import { AgentCompletionMonitor } from '../../lib/agentCompletionMonitor'
 import { preparePtyRuntimeLaunch } from '../../lib/agentRuntimeAdapter'
 import { getLocale, translate } from '../../lib/i18n'
+import { withOpenCodeBridgeEnv } from '../../lib/opencodeBridge'
+import {
+  closeControlSession,
+  isAgentCommand,
+  openControlSession,
+  wantsMcpInjection,
+  withControlEnv,
+} from '../../lib/orchestrator/launch'
 import { isWindows } from '../../lib/platform'
+import { deliverPrompt } from '../../lib/promptDelivery'
 import { usePtyPanelVisible } from '../../lib/ptyVisibility'
 import {
   claimDiscoveredSession,
@@ -29,11 +38,15 @@ import {
 import { waitForSessionHint } from '../../lib/sessionWatch'
 import { acquireSpawnSlot, releaseSpawnSlot } from '../../lib/spawnQueue'
 import {
+  agentHooksEndpoint,
+  agentHooksToken,
   aiMemoryCodexConfigWrite,
   aiMemoryDetect,
   aiMemoryMcpConfigPath,
   aiMemoryOpenCodeConfigWrite,
   attachPty,
+  controlTokenMint,
+  controlTokenRevoke,
   findCliLauncher,
   graphifyCodexConfigWrite,
   graphifyEnsureGraph,
@@ -44,6 +57,8 @@ import {
   listenPtyActivity,
   listenPtyData,
   listenPtyExit,
+  orchestratorClaudeMcpConfigPath,
+  orchestratorCodexLaunch,
   ptyExists,
   readClipboardPayload,
   readGsdChildSession,
@@ -122,6 +137,16 @@ export function useXtermSession(params: {
   initialInput?: string
   sessionId?: string
   env?: Record<string, string>
+  /**
+   * Control-plane identity of this pane. `terminalId` is the pane id, the unit
+   * the control plane addresses (`workspaceTerminals`, `resolveControlContext`)
+   * — not the sub-tab or the PTY id. Absent means no token is minted.
+   */
+  terminalId?: string
+  projectId?: string
+  groupId?: string | null
+  /** Sub-tab marked as an orchestrator: gets Alethe's MCP server injected. */
+  orchestrator?: boolean
   graphifyRepo?: string | null
   /** Gate de Conclusão de Planejamento GSD: projeto com o monitoramento
    * ligado. Presente + `command === 'opencode'`: instala automaticamente o
@@ -181,6 +206,10 @@ export function useXtermSession(params: {
     initialInput,
     sessionId,
     env,
+    terminalId,
+    projectId,
+    groupId,
+    orchestrator,
     graphifyRepo,
     gsdWatcherEnabled,
     trustSessionId,
@@ -267,6 +296,23 @@ export function useXtermSession(params: {
     let queuedInput = ''
     let inputFlushScheduled = false
     let inputWriteChain = Promise.resolve()
+
+    /**
+     * Drops the control token of this terminal once its process is gone — a
+     * token that outlived its terminal would grant a capability with no owner.
+     *
+     * Bound to the PTY exit, NOT to the unmount: a pane unmounts on every tab
+     * switch, container collapse and workspace navigation while its process
+     * keeps running, and revoking there would silently cut a live agent off
+     * from the control plane. A `restarted` exit is skipped because the respawn
+     * that follows mints a fresh token anyway, and revoking after it would
+     * destroy the new one instead of the old.
+     */
+    const releaseControlToken = (reason?: string | null) => {
+      if (reason === 'restarted') return
+      if (!terminalId || !isAgentCommand(command)) return
+      void closeControlSession(terminalId, controlTokenRevoke)
+    }
 
     const resourcePolicy = useProjectsStore.getState().preferences.resourcePolicy
     const terminal = new Terminal({
@@ -810,11 +856,13 @@ export function useXtermSession(params: {
           useTerminalsStore.getState().markSuspended(existingId)
           completionMonitor?.dispose()
           completionMonitor = null
+          releaseControlToken(payload.reason)
           return
         }
         useTerminalsStore.getState().markExited(existingId)
         completionMonitor?.dispose()
         completionMonitor = null
+        releaseControlToken(payload.reason)
         removeSession(sessionPersistenceKey)
         onExitRef.current?.(payload.code)
       })
@@ -1004,6 +1052,16 @@ export function useXtermSession(params: {
         const preparedRuntime = command
           ? preparePtyRuntimeLaunch(command, runtimeProfile, extraArgs ?? [], env)
           : { args: extraArgs ?? [], env }
+        // OpenCode bridge plugin (opencode_bridge.rs): it only reports real
+        // working/idle when it finds the local hooks endpoint and token in the
+        // env. Best-effort like the integrations below — never blocks the spawn.
+        const spawnEnv = await withOpenCodeBridgeEnv(
+          command,
+          preparedRuntime.env,
+          agentHooksEndpoint,
+          agentHooksToken,
+        )
+        if (disposed) return
         // RFC-004 — Graphify por projeto: garante o bootstrap do grafo e injeta o
         // MCP nos 3 CLIs. Best-effort — falha do Graphify NUNCA bloqueia o spawn.
         // Claude recebe `--mcp-config`; Codex/OpenCode recebem por merge no config
@@ -1074,8 +1132,57 @@ export function useXtermSession(params: {
           if (disposed) return
         }
 
+        // Control plane: every agent terminal is minted its own token and told
+        // where to spend it, so it can identify itself and act inside its own
+        // scope. Best-effort like every integration above — a control plane
+        // that is not up yet must never keep a terminal from starting.
+        const controlSession = await openControlSession({
+          agent: command,
+          terminalId: terminalId ?? '',
+          projectId: projectId ?? '',
+          groupId: groupId ?? null,
+          orchestrator: Boolean(orchestrator),
+          mint: controlTokenMint,
+        })
+        if (disposed) return
+        let launchEnv = withControlEnv(spawnEnv, controlSession)
+        // Alethe's own MCP server is injected only into an orchestrator
+        // terminal: that is what the toggle buys, and for Codex it costs the
+        // user's `~/.codex/config.toml` for the session (see the note in the
+        // modal), which no ordinary terminal should ever pay.
+        const orchestratorArgs: string[] = []
+        if (wantsMcpInjection(command, Boolean(orchestrator), controlSession)) {
+          if (command === 'claude') {
+            const path = await orchestratorClaudeMcpConfigPath({
+              terminalId: terminalId ?? '',
+              endpoint: controlSession.endpoint,
+              token: controlSession.token,
+            }).catch(() => undefined)
+            if (path) mcpConfigPaths.push(path)
+          } else if (command === 'codex') {
+            // Codex accepts no arbitrary MCP headers: the token goes in the
+            // environment under the name the CLI is told to read, and nothing
+            // is written to disk.
+            const codex = await orchestratorCodexLaunch(controlSession.endpoint).catch(
+              () => undefined,
+            )
+            if (codex) {
+              orchestratorArgs.push(...codex.args)
+              launchEnv = { ...(launchEnv ?? {}), [codex.tokenEnvVar]: controlSession.token }
+            }
+          }
+          if (disposed) return
+        }
+
         const launch = command
-          ? buildAgentLaunch(command, preparedRuntime.args, resumeId, undefined, mcpConfigPaths)
+          ? buildAgentLaunch(
+              command,
+              preparedRuntime.args,
+              resumeId,
+              undefined,
+              mcpConfigPaths,
+              orchestratorArgs,
+            )
           : { args: preparedRuntime.args, sessionId: undefined, createdSession: false }
         const spawnArgs = launch.args.length > 0 ? launch.args : undefined
         if (command && command !== 'shell') {
@@ -1121,7 +1228,7 @@ export function useXtermSession(params: {
             cwd: cwd ?? undefined,
             extraArgs: spawnArgs,
             launcherOverride,
-            env: preparedRuntime.env,
+            env: launchEnv,
           })
         } finally {
           releaseSpawnSlot()
@@ -1307,6 +1414,7 @@ export function useXtermSession(params: {
             useTerminalsStore.getState().markSuspended(response.id)
             completionMonitor?.dispose()
             completionMonitor = null
+            releaseControlToken(payload.reason)
             return
           }
           const isAgent =
@@ -1353,6 +1461,10 @@ export function useXtermSession(params: {
           useTerminalsStore.getState().markExited(response.id)
           completionMonitor?.dispose()
           completionMonitor = null
+          // Only here, never in the retry branches above: those respawn, and a
+          // revoke landing after the respawn's mint would drop the fresh token
+          // (revocation is keyed by terminal, not by token value).
+          releaseControlToken(payload.reason)
           // Clean exit → não resume na próxima vez
           removeSession(sessionPersistenceKey)
           onExitRef.current?.(payload.code)
@@ -1365,32 +1477,15 @@ export function useXtermSession(params: {
 
         const prompt = initialInput?.trim()
         if (prompt) {
-          const sendInitialInput = async () => {
-            const earliestSendAt = Date.now() + 1_500
-            const timedSendAt = Date.now() + 4_000
-            const deadline = Date.now() + 10_000
-            while (!disposed && Date.now() < deadline) {
-              await new Promise((resolve) => window.setTimeout(resolve, 250))
-              const runtime = useTerminalsStore.getState().byPtyId[response.id]
-              const quietFor = runtime ? Date.now() - runtime.lastIoAt : 0
-              if (
-                Date.now() >= earliestSendAt &&
-                runtime?.alive &&
-                (quietFor >= 700 || Date.now() >= timedSendAt)
-              ) break
-            }
-            if (disposed) return
-            try {
-              await writePtyChunked(response.id, prompt, true)
-              await new Promise((resolve) => window.setTimeout(resolve, 150))
-              await writePty(response.id, '\r')
-              window.setTimeout(() => void writePty(response.id, '\r').catch(() => {}), 1_200)
-              onInitialInputSentRef.current?.()
-            } catch (error) {
-              console.warn('[pty-launch] não foi possível enviar o prompt inicial:', error)
-            }
-          }
-          void sendInitialInput()
+          void deliverPrompt(prompt, {
+            getRuntime: () => useTerminalsStore.getState().byPtyId[response.id],
+            writeChunked: (text, bracketed) => writePtyChunked(response.id, text, bracketed),
+            write: (text) => writePty(response.id, text),
+            isDisposed: () => disposed,
+            onSent: () => onInitialInputSentRef.current?.(),
+            onError: (error) =>
+              console.warn('[pty-launch] não foi possível enviar o prompt inicial:', error),
+          })
         }
 
         scheduleResize()

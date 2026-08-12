@@ -391,12 +391,67 @@ export const en = {
     'Visible, focused, recently spawned and working runtimes are always protected. Parked agents resume from their saved session.',
   'prefs.resourcePolicyManualHint':
     'Alethe still measures and warns, but does not park runtimes or pause new spawns automatically.',
+  'prefs.resourceDerivedHint':
+    'Warning and recovery follow the hard budget (80% and 75% of it) and are recalculated whenever you change it. Edit either field to override the derived value.',
+  'prefs.resourceBudgetMax': 'Budget ceiling: {max} MB — half of this machine’s {total} GB.',
+  'prefs.resourceBudgetMaxUnknown': 'Budget ceiling: {max} MB.',
+  'prefs.resourceBudgetConfirmTitle': 'Raise the memory budget?',
+  'prefs.resourceBudgetConfirmBody':
+    'A {budget} GB budget is about {percent}% of this machine’s {total} GB of RAM.',
+  'prefs.resourceBudgetConfirmBodyUnknown':
+    'A {budget} GB budget is well above the 4 GB Alethe considers safe by default.',
+  'prefs.resourceBudgetConfirmDetail':
+    'Terminals are allowed to grow that far before anything is parked, so leave room for Windows and everything else you run alongside Alethe.',
+  'prefs.resourceBudgetConfirmApply': 'Use {budget} GB',
   'prefs.spawnConcurrency': 'Parallel spawns',
   'prefs.spawnConcurrencyDesc':
     'How many terminals start at once. Lower if opening big groups freezes the app; higher to start faster.',
   'prefs.spawnConcurrencyDecrease': 'Fewer parallel spawns',
   'prefs.spawnConcurrencyIncrease': 'More parallel spawns',
   'prefs.spawnConcurrencyReset': 'Reset to default',
+  'prefs.orchestratorMaxLiveAgents': 'Agents an orchestrator may keep alive',
+  'prefs.orchestratorMaxLiveAgentsDesc':
+    'How many agents can be running at once before an orchestrator terminal is refused a new one. The terminal asking never counts against its own ceiling: this caps the agents an orchestrator starts, not the terminal you opened. Each agent costs a few hundred MB, so this is what keeps an autonomous lead from spawning until the app dies.',
+  'prefs.orchestratorMaxLiveAgentsDecrease': 'Allow fewer live agents',
+  'prefs.orchestratorMaxLiveAgentsIncrease': 'Allow more live agents',
+  'prefs.orchestratorMaxLiveAgentsReset': 'Reset to default',
+  'prefs.orchestratorAutoApprove': 'Run without asking me',
+  'prefs.orchestratorAutoApproveDesc':
+    'An agent terminal can read the workspace freely, but anything that changes it stops and asks you first, showing exactly what it wants to do. Tick an action here to let it through from now on, for every terminal.',
+  'prefs.orchestratorAutoApproveHint':
+    'Everything is off by default. Turn one on only for something you would approve every time anyway — an unattended run, for instance, where nobody is at the machine to answer and each request would be refused after two minutes.',
+
+  /* ---- Control-plane approval ---- */
+  'orchApproval.title': 'An agent is asking to do something',
+  'orchApproval.action.shell.run': 'Run a shell command',
+  'orchApproval.action.agent.spawn': 'Start another agent',
+  'orchApproval.action.agent.prompt': 'Send a prompt to a terminal',
+  'orchApproval.action.agent.kill': 'Stop a terminal',
+  'orchApproval.actionDesc.shell.run':
+    'Opens a real shell in this workspace and types the command below into it.',
+  'orchApproval.actionDesc.agent.spawn':
+    'Creates a new agent terminal and hands it the task below.',
+  'orchApproval.actionDesc.agent.prompt':
+    'Types the text below into a terminal that is already running and submits it.',
+  'orchApproval.actionDesc.agent.kill':
+    'Ends the process tree of a terminal. The terminal and its worktree stay; whatever it was doing does not.',
+  'orchApproval.requester': 'Asked by',
+  'orchApproval.project': 'Project',
+  'orchApproval.target': 'Target',
+  'orchApproval.agent': 'Agent',
+  'orchApproval.payload.shell.run': 'Command',
+  'orchApproval.payload.agent.spawn': 'Task',
+  'orchApproval.payload.agent.prompt': 'Prompt',
+  'orchApproval.payload.agent.kill': 'Terminal',
+  'orchApproval.remember': 'Always allow this from “{terminal}”',
+  'orchApproval.rememberHint':
+    'This session only, this terminal only, this action only. It is forgotten when the terminal closes and never written to disk.',
+  'orchApproval.allow': 'Allow',
+  'orchApproval.deny': 'Deny',
+  'orchApproval.queued': '{count} more waiting',
+  'orchApproval.expiry':
+    'Left unanswered for {seconds} seconds, this is refused on your behalf and the agent is told nobody answered.',
+  'orchApproval.pending': '{count} waiting for your answer',
   'prefs.gsdSyncModelsTitle': 'GSD Sync model fallback chain',
   'prefs.gsdSyncModelsDesc': 'Backup models for the GSD Sync child session, tried in order if the mirrored model fails.',
   'prefs.gsdSyncModelsHint': 'The GSD Sync session always tries the same model the main conversation just used, first and automatically. This list is only a safety net for the rare case that model also fails (e.g. rate limit) — each one is tried in order until one works.',
@@ -807,6 +862,11 @@ export const en = {
   'term.unrestrictedOn': 'On',
   'term.unrestrictedOff': 'Off',
   'term.alwaysUnrestricted': 'Always start with unrestricted mode',
+  'term.orchestrator': 'Orchestrator',
+  'term.orchestratorDescription':
+    "Connects this agent to Alethe's own tools: it can list the terminals in its project or group, read their output, and start shells and other agents.",
+  'term.orchestratorCodexNote':
+    'Codex cannot receive credentials through its config file, so this terminal starts with --ignore-user-config: your ~/.codex/config.toml is not read for this session.',
   'term.runtimeProfile': 'Runtime profile',
   'term.runtimeProfile.full': 'Full',
   'term.runtimeProfile.full.desc':

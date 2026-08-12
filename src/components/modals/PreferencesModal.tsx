@@ -235,6 +235,21 @@ export function PreferencesModal() {
       },
       {
         category: 'terminal',
+        target: 'orchestrator-live-agents',
+        label: t('prefs.orchestratorMaxLiveAgents'),
+        description: t('prefs.orchestratorMaxLiveAgentsDesc'),
+        keywords: 'orchestrator orquestrador spawn agents agentes limit teto ram memory delegation',
+      },
+      {
+        category: 'terminal',
+        target: 'orchestrator-auto-approve',
+        label: t('prefs.orchestratorAutoApprove'),
+        description: t('prefs.orchestratorAutoApproveDesc'),
+        keywords:
+          'approval aprovação confirmação confirm permission permissão auto approve mcp control plane shell spawn prompt kill',
+      },
+      {
+        category: 'terminal',
         target: 'agents',
         label: t('prefs.agentsTitle'),
         description: t('prefs.agentsDesc'),

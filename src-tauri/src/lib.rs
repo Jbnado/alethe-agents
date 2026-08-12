@@ -10,6 +10,8 @@ mod claude_usage;
 mod cli_launch;
 mod cli_resolver;
 mod cli_shim;
+mod control_api;
+mod control_bridge;
 mod codex_sessions;
 mod codex_app_server;
 mod codex_usage;
@@ -24,6 +26,7 @@ mod ghostty_ffi;
 mod git_control;
 mod github_sync;
 mod logging;
+mod mcp_server;
 mod paths;
 mod profiles;
 mod projects;
@@ -53,6 +56,7 @@ mod ai_memory;
 mod plugins;
 mod opencode_sessions;
 mod opencode_bridge;
+mod orchestrator_config;
 mod project_detector;
 mod contract_check;
 mod health_probe;
@@ -239,6 +243,11 @@ pub fn run() {
             agent_events::agent_hooks_settings_path,
             agent_events::agent_hooks_endpoint,
             agent_events::agent_hooks_token,
+            control_api::control_token_mint,
+            control_api::control_token_revoke,
+            control_bridge::control_api_reply,
+            orchestrator_config::orchestrator_claude_mcp_config_path,
+            orchestrator_config::orchestrator_codex_launch,
             codex_app_server::codex_app_server_start,
             codex_app_server::codex_app_server_send,
             codex_app_server::codex_app_server_stop,

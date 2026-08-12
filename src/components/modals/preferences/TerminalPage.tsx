@@ -1,13 +1,34 @@
 import { Minus, Plus, RotateCcw } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-import { useT } from '../../../lib/i18n'
+import { intlLocale, useT } from '../../../lib/i18n'
 import { isMacOS } from '../../../lib/platform'
 import { countLiveResumablePanes, resetLastSession } from '../../../lib/resetLastSession'
-import type { AgentType } from '../../../lib/types'
-import { SPAWN_CONCURRENCY_LIMITS, useProjectsStore } from '../../../stores/projectsStore'
+import {
+  applyResourcePolicyPatch,
+  clampMemoryBudgetMb,
+  describeBudgetShare,
+  maxMemoryBudgetMb,
+  mbToGb,
+  MEMORY_BUDGET_MIN_MB,
+  needsBudgetConfirmation,
+  THRESHOLD_GAP_MB,
+} from '../../../lib/resourcePolicy'
+import { getMemoryStats } from '../../../lib/tauri'
+import {
+  ORCHESTRATOR_APPROVAL_ACTIONS,
+  type AgentType,
+  type OrchestratorApprovalAction,
+} from '../../../lib/types'
+import {
+  ORCHESTRATOR_LIVE_AGENT_LIMITS,
+  SPAWN_CONCURRENCY_LIMITS,
+  useProjectsStore,
+} from '../../../stores/projectsStore'
 import { useUiStore } from '../../../stores/uiStore'
 import { AgentIcon } from '../../icons/AgentIcons'
+import controls from '../controls.module.css'
+import { Modal } from '../Modal'
 import styles from '../PreferencesModal.module.css'
 import { SettingsSection } from './primitives'
 
@@ -28,38 +49,86 @@ export function TerminalPage({ enabledCount }: { enabledCount: number }) {
   const setPreferences = useProjectsStore((state) => state.setPreferences)
   const pushToast = useUiStore((state) => state.pushToast)
   const [resetting, setResetting] = useState(false)
+  const [systemTotalMb, setSystemTotalMb] = useState<number | null>(null)
+  const [pendingBudgetMb, setPendingBudgetMb] = useState<number | null>(null)
   const concurrency = preferences.spawnConcurrency
+  const maxLiveAgents = preferences.orchestratorMaxLiveAgents
   const resourcePolicy = preferences.resourcePolicy
   const effectiveResourceMode =
     resourcePolicy.automaticParkingOptIn === true && resourcePolicy.mode === 'smart-lru'
       ? 'smart-lru'
       : 'manual'
-  const setResourcePolicy = (patch: Partial<typeof resourcePolicy>) => {
-    const next = { ...resourcePolicy, ...patch }
-    next.memoryBudgetMb = Math.min(8192, Math.max(768, Math.round(next.memoryBudgetMb)))
-    next.warningThresholdMb = Math.min(
-      next.memoryBudgetMb - 64,
-      Math.max(512, Math.round(next.warningThresholdMb)),
-    )
-    next.recoveryTargetMb = Math.min(
-      next.warningThresholdMb - 64,
-      Math.max(384, Math.round(next.recoveryTargetMb)),
-    )
-    next.hiddenAgentIdleMinutes = Math.min(
-      240,
-      Math.max(5, Math.round(next.hiddenAgentIdleMinutes)),
-    )
-    next.hiddenShellIdleMinutes = Math.min(
-      480,
-      Math.max(5, Math.round(next.hiddenShellIdleMinutes)),
-    )
-    setPreferences({ resourcePolicy: next })
+
+  // Physical RAM decides the budget ceiling. A failed read only costs the
+  // machine-aware limit — the fixed fallback keeps the fields usable.
+  useEffect(() => {
+    let cancelled = false
+    void getMemoryStats()
+      .then((stats) => {
+        if (!cancelled) setSystemTotalMb(stats.system_total_mb)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const maxBudgetMb = useMemo(() => maxMemoryBudgetMb(systemTotalMb), [systemTotalMb])
+  const numberFormat = useMemo(
+    () => new Intl.NumberFormat(intlLocale(preferences.language), { maximumFractionDigits: 1 }),
+    [preferences.language],
+  )
+  const pendingShare = describeBudgetShare(pendingBudgetMb ?? 0, systemTotalMb)
+
+  const applyResourcePolicy = (patch: Partial<typeof resourcePolicy>) => {
+    setPreferences({
+      resourcePolicy: applyResourcePolicyPatch(resourcePolicy, patch, maxBudgetMb),
+    })
   }
+
+  const setResourcePolicy = (patch: Partial<typeof resourcePolicy>) => {
+    if (patch.memoryBudgetMb !== undefined) {
+      const budgetMb = clampMemoryBudgetMb(patch.memoryBudgetMb, maxBudgetMb)
+      if (needsBudgetConfirmation(budgetMb, resourcePolicy.memoryBudgetMb)) {
+        setPendingBudgetMb(budgetMb)
+        return
+      }
+    }
+    applyResourcePolicy(patch)
+  }
+
+  const confirmPendingBudget = () => {
+    if (pendingBudgetMb !== null) applyResourcePolicy({ memoryBudgetMb: pendingBudgetMb })
+    setPendingBudgetMb(null)
+  }
+
   const setConcurrency = (n: number) =>
     setPreferences({
       spawnConcurrency: Math.min(
         SPAWN_CONCURRENCY_LIMITS.max,
         Math.max(SPAWN_CONCURRENCY_LIMITS.min, n),
+      ),
+    })
+
+  const setMaxLiveAgents = (n: number) =>
+    setPreferences({
+      orchestratorMaxLiveAgents: Math.min(
+        ORCHESTRATOR_LIVE_AGENT_LIMITS.max,
+        Math.max(ORCHESTRATOR_LIVE_AGENT_LIMITS.min, n),
+      ),
+    })
+
+  const autoApprove = preferences.orchestratorAutoApprove
+  const setAutoApprove = (action: OrchestratorApprovalAction, value: boolean) =>
+    setPreferences({
+      // Rebuilt from every key, not patched: the field is optional on disk, so
+      // a partial object here would leave the missing actions undefined.
+      orchestratorAutoApprove: ORCHESTRATOR_APPROVAL_ACTIONS.reduce(
+        (acc, key) => {
+          acc[key] = key === action ? value : autoApprove?.[key] === true
+          return acc
+        },
+        {} as Record<OrchestratorApprovalAction, boolean>,
       ),
     })
 
@@ -121,8 +190,8 @@ export function TerminalPage({ enabledCount }: { enabledCount: number }) {
               <span>{t('prefs.resourceBudget')}</span>
               <input
                 type="number"
-                min={768}
-                max={8192}
+                min={MEMORY_BUDGET_MIN_MB}
+                max={maxBudgetMb}
                 step={128}
                 value={resourcePolicy.memoryBudgetMb}
                 onChange={(event) =>
@@ -135,7 +204,7 @@ export function TerminalPage({ enabledCount }: { enabledCount: number }) {
               <input
                 type="number"
                 min={512}
-                max={resourcePolicy.memoryBudgetMb - 64}
+                max={resourcePolicy.memoryBudgetMb - THRESHOLD_GAP_MB}
                 step={64}
                 value={resourcePolicy.warningThresholdMb}
                 onChange={(event) =>
@@ -148,7 +217,7 @@ export function TerminalPage({ enabledCount }: { enabledCount: number }) {
               <input
                 type="number"
                 min={384}
-                max={resourcePolicy.warningThresholdMb - 64}
+                max={resourcePolicy.warningThresholdMb - THRESHOLD_GAP_MB}
                 step={64}
                 value={resourcePolicy.recoveryTargetMb}
                 onChange={(event) =>
@@ -184,12 +253,59 @@ export function TerminalPage({ enabledCount }: { enabledCount: number }) {
             </label>
           </div>
           <p className={styles.resourceHint}>
+            {t('prefs.resourceDerivedHint')}{' '}
+            {systemTotalMb
+              ? t('prefs.resourceBudgetMax', {
+                  max: numberFormat.format(maxBudgetMb),
+                  total: numberFormat.format(mbToGb(systemTotalMb)),
+                })
+              : t('prefs.resourceBudgetMaxUnknown', { max: numberFormat.format(maxBudgetMb) })}
+          </p>
+          <p className={styles.resourceHint}>
             {effectiveResourceMode === 'smart-lru'
               ? t('prefs.resourcePolicySmartHint')
               : t('prefs.resourcePolicyManualHint')}
           </p>
         </div>
       </SettingsSection>
+
+      <Modal
+        open={pendingBudgetMb !== null}
+        onClose={() => setPendingBudgetMb(null)}
+        title={t('prefs.resourceBudgetConfirmTitle')}
+        footer={
+          <>
+            <button type="button" className={controls.btn} onClick={() => setPendingBudgetMb(null)}>
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              data-autofocus
+              className={`${controls.btn} ${controls.btnPrimary}`}
+              onClick={confirmPendingBudget}
+            >
+              {t('prefs.resourceBudgetConfirmApply', {
+                budget: numberFormat.format(pendingShare.budgetGb),
+              })}
+            </button>
+          </>
+        }
+      >
+        <p style={{ fontSize: 13, color: 'var(--fg)', lineHeight: 1.5, margin: '0 0 12px' }}>
+          {pendingShare.totalGb !== null && pendingShare.percentOfSystem !== null
+            ? t('prefs.resourceBudgetConfirmBody', {
+                budget: numberFormat.format(pendingShare.budgetGb),
+                total: numberFormat.format(pendingShare.totalGb),
+                percent: pendingShare.percentOfSystem,
+              })
+            : t('prefs.resourceBudgetConfirmBodyUnknown', {
+                budget: numberFormat.format(pendingShare.budgetGb),
+              })}
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--fg-muted)', lineHeight: 1.5, margin: 0 }}>
+          {t('prefs.resourceBudgetConfirmDetail')}
+        </p>
+      </Modal>
 
       <SettingsSection
         id="spawn-concurrency"
@@ -223,6 +339,63 @@ export function TerminalPage({ enabledCount }: { enabledCount: number }) {
             <RotateCcw size={15} />
           </button>
         </div>
+      </SettingsSection>
+
+      <SettingsSection
+        id="orchestrator-live-agents"
+        title={t('prefs.orchestratorMaxLiveAgents')}
+        description={t('prefs.orchestratorMaxLiveAgentsDesc')}
+      >
+        <div className={styles.zoomControl}>
+          <button
+            type="button"
+            onClick={() => setMaxLiveAgents(maxLiveAgents - ORCHESTRATOR_LIVE_AGENT_LIMITS.step)}
+            disabled={maxLiveAgents <= ORCHESTRATOR_LIVE_AGENT_LIMITS.min}
+            aria-label={t('prefs.orchestratorMaxLiveAgentsDecrease')}
+          >
+            <Minus size={15} />
+          </button>
+          <strong>{maxLiveAgents}</strong>
+          <button
+            type="button"
+            onClick={() => setMaxLiveAgents(maxLiveAgents + ORCHESTRATOR_LIVE_AGENT_LIMITS.step)}
+            disabled={maxLiveAgents >= ORCHESTRATOR_LIVE_AGENT_LIMITS.max}
+            aria-label={t('prefs.orchestratorMaxLiveAgentsIncrease')}
+          >
+            <Plus size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setMaxLiveAgents(ORCHESTRATOR_LIVE_AGENT_LIMITS.default)}
+            disabled={maxLiveAgents === ORCHESTRATOR_LIVE_AGENT_LIMITS.default}
+            aria-label={t('prefs.orchestratorMaxLiveAgentsReset')}
+          >
+            <RotateCcw size={15} />
+          </button>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        id="orchestrator-auto-approve"
+        title={t('prefs.orchestratorAutoApprove')}
+        description={t('prefs.orchestratorAutoApproveDesc')}
+      >
+        <div className={styles.optionList}>
+          {ORCHESTRATOR_APPROVAL_ACTIONS.map((action) => (
+            <label key={action} className={`${styles.optionRow} ${styles.optionToggleRow}`}>
+              <span className={styles.optionCopy}>
+                <strong>{t(`orchApproval.action.${action}`)}</strong>
+                <span>{t(`orchApproval.actionDesc.${action}`)}</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={autoApprove?.[action] === true}
+                onChange={(event) => setAutoApprove(action, event.target.checked)}
+              />
+            </label>
+          ))}
+        </div>
+        <p className={styles.resourceHint}>{t('prefs.orchestratorAutoApproveHint')}</p>
       </SettingsSection>
 
       <SettingsSection

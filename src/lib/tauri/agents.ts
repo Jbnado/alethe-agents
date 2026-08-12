@@ -1,6 +1,8 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 
+import type { ControlReply, ControlRequest } from '../orchestrator/controlBridge'
+
 /** Endpoint HTTP local (listener já usado pelos hooks do Claude Code em
  * agent_events.rs) — reaproveitado pelo plugin do OpenCode pra reportar
  * working/idle real (ver opencode_bridge.rs). */
@@ -31,6 +33,24 @@ export function listenCodexAppServer(
   handler: (event: CodexAppServerEvent) => void,
 ): Promise<UnlistenFn> {
   return listen<CodexAppServerEvent>(`agent-sandbox-app-server://event/${id}`, (event) => handler(event.payload))
+}
+
+// --- Control plane bridge (control_bridge.rs) ---
+
+/**
+ * Control requests an agent terminal made through the MCP server. The backend
+ * thread that emitted one stays parked until `controlApiReply` answers it, so
+ * every request must be answered exactly once.
+ */
+export function listenControlRequest(
+  handler: (request: ControlRequest) => void,
+): Promise<UnlistenFn> {
+  return listen<ControlRequest>('alethe://control-request', (event) => handler(event.payload))
+}
+
+/** Answers one control request. False means nobody was waiting anymore. */
+export async function controlApiReply(requestId: string, result: ControlReply): Promise<boolean> {
+  return invoke<boolean>('control_api_reply', { requestId, result })
 }
 
 /** Caminho do settings.json de hooks gerado pro Claude Code (agent_events.rs). */

@@ -51,6 +51,41 @@ describe('buildAgentLaunch', () => {
     ).toEqual(['--session', 'open-pane', '--model', 'x'])
   })
 
+  it('Claude receives one --mcp-config per managed server', () => {
+    const launch = buildAgentLaunch('claude', ['--model', 'sonnet'], 'pane-session', undefined, [
+      'C:/tmp/graphify.json',
+      'C:/tmp/alethe.json',
+    ])
+
+    expect(launch.args).toEqual([
+      '--resume',
+      'pane-session',
+      '--mcp-config',
+      'C:/tmp/graphify.json',
+      '--mcp-config',
+      'C:/tmp/alethe.json',
+      '--model',
+      'sonnet',
+    ])
+  })
+
+  it('Codex orchestrator flags stay ahead of the resume subcommand', () => {
+    // `-c` belongs to the root command: placed after `resume` it would not parse.
+    const leading = ['--ignore-user-config', '-c', 'mcp_servers.alethe={"url":"u"}']
+
+    expect(
+      buildAgentLaunch('codex', ['--search'], 'codex-pane', undefined, undefined, leading).args,
+    ).toEqual([...leading, 'resume', 'codex-pane', '--search'])
+    expect(
+      buildAgentLaunch('codex', ['--search'], undefined, undefined, undefined, leading).args,
+    ).toEqual([...leading, '--search'])
+  })
+
+  it('Codex without orchestration keeps the arguments it always had', () => {
+    expect(buildAgentLaunch('codex', ['--search'], 'codex-pane', undefined, undefined, []).args)
+      .toEqual(['resume', 'codex-pane', '--search'])
+  })
+
   it('Antigravity keeps agy flags and uses its pane-specific conversation', () => {
     expect(
       buildAgentLaunch(

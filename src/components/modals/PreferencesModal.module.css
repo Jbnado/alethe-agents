@@ -407,6 +407,21 @@
 }
 .optionCopy strong { font-size: 12px; }
 .optionCopy span { color: var(--fg-muted); font-size: 10px; }
+
+/* `.optionRow` rendered as a label with a checkbox on the right. */
+.optionToggleRow {
+  cursor: pointer;
+}
+.optionToggleRow:hover {
+  border-color: var(--border-strong);
+}
+.optionToggleRow input {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
 .rowActions { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .iconActionDanger {
   width: 30px;

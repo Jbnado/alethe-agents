@@ -16,6 +16,7 @@ import {
   rememberProjectTab,
   rememberWorkspaceTab,
   resetTerminalRuntime,
+  shouldAdoptProjectDefaultCwd,
   touchTerminalUsage,
 } from '../lib/terminalFactory'
 import { cleanupPtys } from '../lib/terminalLifecycle'
@@ -65,11 +66,16 @@ export function createTerminalsSlice({ get, update, updateTerminal }: SliceCtx):
             cwd: args.firstTab.cwd.trim() || finalCwd,
           },
         })
+        const adoptsDefaultCwd = shouldAdoptProjectDefaultCwd({
+          cwd: finalCwd,
+          worktreeAgentId: args.worktreeAgentId,
+          suppressDefaultCwd: args.suppressDefaultCwd,
+        })
         const projects = state.projects.map((p) =>
           p.id === projectId
             ? {
                 ...p,
-                ...(!args.worktreeAgentId && finalCwd ? { defaultCwd: finalCwd } : {}),
+                ...(adoptsDefaultCwd ? { defaultCwd: finalCwd } : {}),
                 terminals: [...p.terminals, terminal],
               }
             : p,
@@ -142,6 +148,7 @@ export function createTerminalsSlice({ get, update, updateTerminal }: SliceCtx):
               cwd: info.path,
               firstTab: { ...args.firstTab, cwd: info.path },
               worktreeAgentId: agentId,
+              suppressDefaultCwd: args.suppressDefaultCwd,
             })
           } catch (error) {
             console.warn('[projectsStore] autoWorktree falhou; terminal normal:', error)

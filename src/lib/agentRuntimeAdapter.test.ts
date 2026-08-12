@@ -21,6 +21,24 @@ describe('preparePtyRuntimeLaunch', () => {
     const launch = preparePtyRuntimeLaunch('claude', 'diagnostic', ['--safe-mode'])
     expect(launch.args).toEqual(['--safe-mode'])
   })
+
+  it('lean Codex keeps the alternate screen off for the interactive TUI', () => {
+    const launch = preparePtyRuntimeLaunch('codex', 'lean')
+    expect(launch.args).toContain('--no-alt-screen')
+  })
+
+  it('never passes --no-alt-screen to `codex exec`', () => {
+    // `codex exec` rejects the flag with "unexpected argument" and exits before
+    // printing anything — a spawned one-shot agent that looks like it never
+    // opened. Observed against codex-cli 0.147.0.
+    const launch = preparePtyRuntimeLaunch('codex', 'lean', [
+      'exec',
+      '--skip-git-repo-check',
+      'do the thing',
+    ])
+    expect(launch.args).not.toContain('--no-alt-screen')
+    expect(launch.args).toEqual(['exec', '--skip-git-repo-check', 'do the thing'])
+  })
 })
 
 describe('AGENT_RUNTIME_ADAPTERS', () => {

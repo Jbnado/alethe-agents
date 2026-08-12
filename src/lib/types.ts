@@ -107,6 +107,13 @@ export type SubTab = {
   initialInput?: string
   /** Perfil de custo do runtime. Ausente preserva o comportamento completo legado. */
   runtimeProfile?: AgentRuntimeProfile
+  /**
+   * Orchestrator mode: this sub-tab's agent gets Alethe's own MCP server plus a
+   * control token carrying the elevated capabilities (spawn/prompt/kill other
+   * agents). Optional and absent by default, so `projects.json` needs no
+   * migration — an old file simply has no orchestrator terminals.
+   */
+  orchestrator?: boolean
 }
 
 export type AgentRuntimeProfile = 'full' | 'lean' | 'diagnostic'
@@ -325,6 +332,27 @@ export type WorkspaceHistoryEntry = {
   visitedAt: number
 }
 
+/**
+ * Control-plane operations that change something and therefore ask a person
+ * first. Reads (`terminal.list`, `terminal.read`, …) are never in this list.
+ *
+ * Every value is also a `ControlCapability` in `lib/orchestrator/scope.ts`, and
+ * the compiler enforces that: the approval gate hands these straight to the
+ * capability-keyed session grants, so a typo here fails the build instead of
+ * silently creating a grant nothing ever reads.
+ */
+export const ORCHESTRATOR_APPROVAL_ACTIONS = [
+  'shell.run',
+  'agent.spawn',
+  'agent.prompt',
+  'agent.kill',
+] as const
+
+export type OrchestratorApprovalAction = (typeof ORCHESTRATOR_APPROVAL_ACTIONS)[number]
+
+/** Per-action "run it without asking me". Every key defaults to false. */
+export type OrchestratorAutoApprove = Record<OrchestratorApprovalAction, boolean>
+
 export type Preferences = {
   /** Idioma da UI. Default 'en'. */
   language: Locale
@@ -400,6 +428,26 @@ export type Preferences = {
   dictationEnabled: boolean
   /** Quantos PTYs podem ser spawnados em paralelo (fila global). Default 3. */
   spawnConcurrency: number
+  /**
+   * Ceiling on how many agent processes may be alive at once before the control
+   * plane refuses `alethe_spawn_agent`. Default 3, clamped to [1..8].
+   *
+   * Not cosmetic: a `claude -p` costs roughly 400 MB, so an autonomous lead with
+   * no ceiling keeps spawning until the app dies. The memory supervisor only
+   * reacts after the RAM is already committed; this refuses before it is.
+   */
+  orchestratorMaxLiveAgents: number
+  /**
+   * Control-plane writes that may run without a confirmation dialog.
+   *
+   * Optional so an install predating the field keeps loading; the migration
+   * backfills it with every key false. False is the only safe default — an
+   * agent asking to run a shell command, start another agent, prompt a live
+   * terminal or stop one is asking to act on this machine, and the person who
+   * owns it decides. Turning a key on here is how that decision is made once
+   * instead of every time.
+   */
+  orchestratorAutoApprove?: OrchestratorAutoApprove
   /** Limites de RAM e política de estacionamento automático dos runtimes. */
   resourcePolicy: ResourcePolicyPreferences
   /** v2.2 — grid layout custom da workspace inteira (cross-grupo). */
@@ -517,6 +565,13 @@ export const DEFAULT_PREFERENCES: Preferences = {
   notifyOnLimitReset: true,
   dictationEnabled: false,
   spawnConcurrency: 3,
+  orchestratorMaxLiveAgents: 3,
+  orchestratorAutoApprove: {
+    'shell.run': false,
+    'agent.spawn': false,
+    'agent.prompt': false,
+    'agent.kill': false,
+  },
   resourcePolicy: {
     mode: 'manual',
     automaticParkingOptIn: false,

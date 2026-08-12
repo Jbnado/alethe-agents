@@ -64,6 +64,7 @@ export function makeDefaultTerminal(args: {
     extraArgs?: string[]
     initialInput?: string
     runtimeProfile?: AgentRuntimeProfile
+    orchestrator?: boolean
   }
   worktreeAgentId?: string
   gsdSyncViewer?: boolean
@@ -91,9 +92,27 @@ export function makeDefaultTerminal(args: {
         extraArgs: args.firstTab.extraArgs,
         initialInput: args.firstTab.initialInput,
         runtimeProfile: args.firstTab.runtimeProfile,
+        orchestrator: args.firstTab.orchestrator,
       },
     ],
   }
+}
+
+/**
+ * Whether creating a terminal should also become the project's default folder.
+ *
+ * The human flow through the new-terminal modal always should: the folder just
+ * picked is the folder the user means from now on. A terminal created by
+ * orchestration must not — an agent opening a shell in a subfolder would
+ * silently move the default folder of a project it does not own. Isolated
+ * worktree terminals were already excluded for the same reason.
+ */
+export function shouldAdoptProjectDefaultCwd(args: {
+  cwd: string
+  worktreeAgentId?: string
+  suppressDefaultCwd?: boolean
+}): boolean {
+  return Boolean(args.cwd) && !args.worktreeAgentId && !args.suppressDefaultCwd
 }
 
 const MARKDOWN_FILE_PATTERN = /\.(md|markdown|mdx)$/i

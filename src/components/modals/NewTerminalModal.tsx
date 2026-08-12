@@ -1,10 +1,11 @@
-import { CircleCheck, Folder, Info, Zap } from 'lucide-react'
+import { CircleCheck, Folder, Info, Network, Zap } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { useUiStore } from '../../stores/uiStore'
 import { basename } from '../../lib/paths'
 import { getProjectDefaultCwd, useProjectsStore } from '../../stores/projectsStore'
 import { pickDirectory } from '../../lib/dialog'
+import { supportsOrchestrator } from '../../lib/orchestrator/launch'
 import { AGENT_TYPE_LABELS, ALL_AGENT_TYPES, UNRESTRICTED_FLAG, type AgentRuntimeProfile, type AgentType } from '../../lib/types'
 import { AgentIcon } from '../icons/AgentIcons'
 import { useT } from '../../lib/i18n'
@@ -36,6 +37,7 @@ export function NewTerminalModal() {
 
   const [type, setType] = useState<AgentType>('claude')
   const [runtimeProfile, setRuntimeProfile] = useState<AgentRuntimeProfile>('lean')
+  const [orchestrator, setOrchestrator] = useState(false)
   const [cwd, setCwd] = useState('')
   const [unrestricted, setUnrestricted] = useState<Record<AgentType, boolean>>({
     shell: false,
@@ -78,6 +80,7 @@ export function NewTerminalModal() {
     if (!open) return
     setCwd(inheritedCwd)
     setType(defaultType)
+    setOrchestrator(false)
     setUnrestricted({
       shell: alwaysStartUnrestricted,
       claude: alwaysStartUnrestricted,
@@ -92,6 +95,7 @@ export function NewTerminalModal() {
   const reset = () => {
     setType(defaultType)
     setRuntimeProfile('lean')
+    setOrchestrator(false)
     setCwd('')
     setUnrestricted({
       shell: false,
@@ -110,10 +114,19 @@ export function NewTerminalModal() {
     const finalCwd = cwd.trim() || inheritedCwd
     const flag = UNRESTRICTED_FLAG[type]
     const extraArgs = unrestricted[type] && flag ? [flag] : undefined
+    // The toggle is only rendered for agents with a verified MCP path, but the
+    // guard stays here too: the selected agent can change while it is on.
+    const wantsOrchestration = orchestrator && supportsOrchestrator(type)
     await createAgentTerminal(context.projectId, {
       name: finalName,
       cwd: finalCwd,
-      firstTab: { type, cwd: finalCwd, extraArgs, runtimeProfile },
+      firstTab: {
+        type,
+        cwd: finalCwd,
+        extraArgs,
+        runtimeProfile,
+        orchestrator: wantsOrchestration || undefined,
+      },
     })
     reset()
     closeModal()
@@ -205,6 +218,35 @@ export function NewTerminalModal() {
             />
             <span>{t('term.alwaysUnrestricted')}</span>
           </label>
+        ) : null}
+        {/* Only agents whose MCP-over-HTTP path was verified end to end can be
+            orchestrators — an option that silently does nothing would be worse
+            than no option at all. */}
+        {supportsOrchestrator(type) ? (
+          <>
+            <button
+              type="button"
+              className={`${styles.permissionToggle} ${styles.orchestratorToggle} ${orchestrator ? styles.orchestratorToggleActive : ''}`}
+              onClick={() => setOrchestrator((value) => !value)}
+              aria-pressed={orchestrator}
+            >
+              <span className={styles.permissionToggleIcon}>
+                <Network size={17} />
+              </span>
+              <span className={styles.permissionToggleCopy}>
+                <span className={styles.permissionToggleTitle}>{t('term.orchestrator')}</span>
+                <span className={styles.permissionToggleDescription}>
+                  {t('term.orchestratorDescription')}
+                </span>
+              </span>
+              <span className={styles.permissionToggleState}>
+                {orchestrator ? t('term.unrestrictedOn') : t('term.unrestrictedOff')}
+              </span>
+            </button>
+            {orchestrator && type === 'codex' ? (
+              <p className={styles.orchestratorNote}>{t('term.orchestratorCodexNote')}</p>
+            ) : null}
+          </>
         ) : null}
       </section>
 

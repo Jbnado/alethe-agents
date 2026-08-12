@@ -36,6 +36,8 @@ type ModalKind =
   | 'updateAvailable'
   | 'whatsNew'
   | 'remoteControl'
+  /** Confirmation for a control-plane write asked for by an agent terminal. */
+  | 'orchestratorApproval'
   | null
 
 export type ActiveView = 'home' | 'workspace' | 'agentCanvas' | 'agentSandbox'
